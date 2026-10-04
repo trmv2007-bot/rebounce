@@ -84,6 +84,9 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         path = urlparse(self.path).path
+        if path.startswith("/assets/"):
+            self.path = "/" + path.split("/assets/", 1)[1]
+            return super().do_GET()
         if path == "/health":
             return self._json(200, {"status": "ok", "stage": 9})
         if path == f"/v1/companions?user_id=":

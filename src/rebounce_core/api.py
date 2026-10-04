@@ -143,6 +143,7 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
                         "projects": _table_rows_direct(self.app.store, "projects", cid, "updated_at DESC"),
                         "approvals": list_approvals(self.app.store, cid),
                         "permissions": self._permissions_json(cid),
+                        "tools": TOOL_SPECS_JSON(),
                     })
                 if len(parts) == 5 and parts[3] == "conversations":
                     conversation = self.app.store.get_conversation(parts[4])

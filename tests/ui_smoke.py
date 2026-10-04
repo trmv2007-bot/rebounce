@@ -7,8 +7,6 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
-from playwright.sync_api import sync_playwright
-
 
 ROOT = Path(__file__).resolve().parents[1] / "web"
 CID = "00000000-0000-0000-0000-000000000001"
@@ -183,6 +181,8 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def main() -> None:
+    from playwright.sync_api import sync_playwright
+
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     server.RequestHandlerClass.directory = str(ROOT)
     thread = threading.Thread(target=server.serve_forever, daemon=True)

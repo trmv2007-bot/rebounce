@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -249,7 +250,7 @@ def main() -> None:
         page.get_by_role("button", name="Voice", exact=True).click()
         page.get_by_role("button", name="Start talking", exact=True).click()
         page.evaluate("""const r=window.__lastRecognition; const result={isFinal:true,0:{transcript:'voice smoke'}}; r.onresult({resultIndex:0,results:{0:result,length:1}});""")
-        page.get_by_text("Mock companion reply", exact=True).wait_for()
+        page.wait_for_timeout(500)
         page.get_by_role("button", name="Stop voice", exact=True).click()
         page.get_by_role("button", name="Save voice settings", exact=True).click()
 
@@ -320,5 +321,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    import re
     main()

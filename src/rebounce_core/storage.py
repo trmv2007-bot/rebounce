@@ -114,6 +114,119 @@ CREATE TABLE IF NOT EXISTS commitments (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS companion_settings (
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (companion_id, key)
+);
+
+CREATE TABLE IF NOT EXISTS reminders (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    due_at TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'reminder',
+    recurrence TEXT,
+    status TEXT NOT NULL DEFAULT 'scheduled',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS proactive_queue (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    source_ref TEXT,
+    created_at TEXT NOT NULL,
+    expires_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS curiosity_items (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    query TEXT NOT NULL,
+    title TEXT NOT NULL,
+    url TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    score REAL NOT NULL DEFAULT 0.0,
+    status TEXT NOT NULL DEFAULT 'new',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS notes (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    tags TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    path TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    project_id TEXT,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'open',
+    priority INTEGER NOT NULL DEFAULT 2,
+    due_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS calendar_events (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    start_at TEXT NOT NULL,
+    end_at TEXT,
+    notes TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'scheduled',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tool_approvals (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    tool_name TEXT NOT NULL,
+    args_json TEXT NOT NULL,
+    requested_level INTEGER NOT NULL,
+    reason TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT NOT NULL,
+    resolved_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS mcp_servers (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    command TEXT NOT NULL,
+    args_json TEXT NOT NULL DEFAULT '[]',
+    enabled INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_created
     ON messages(conversation_id, created_at);
 

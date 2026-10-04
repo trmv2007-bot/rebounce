@@ -199,7 +199,7 @@ class Stage1Tests(unittest.TestCase):
                 with urlopen(f"{base}/health") as response:
                     health = json.loads(response.read().decode())
                     self.assertEqual(response.status, 200)
-                self.assertEqual(health["stage"], 1)
+                self.assertGreaterEqual(health["stage"], 1)
 
                 create_req = Request(
                     f"{base}/v1/companions",

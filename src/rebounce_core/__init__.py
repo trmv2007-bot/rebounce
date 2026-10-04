@@ -3,6 +3,7 @@
 from .api import ReBounceHTTPServer, create_local_api
 from .events import Event, EventType
 from .identity import CompanionIdentity
+from .memory import MemoryCandidate, MemoryEngine
 from .models import ModelMessage, ModelResponse, ModelRole, ModelStreamChunk
 from .permissions import ActionLevel, PermissionPolicy
 from .provider import (
@@ -11,6 +12,7 @@ from .provider import (
     OpenAICompatibleProvider,
     StubModelProvider,
 )
+from .relationship import RelationshipEngine
 from .runtime import CompanionRuntime, RuntimeResult, RuntimeState
 from .storage import SQLiteStore
 
@@ -20,6 +22,8 @@ __all__ = [
     "CompanionRuntime",
     "Event",
     "EventType",
+    "MemoryCandidate",
+    "MemoryEngine",
     "ModelMessage",
     "ModelProvider",
     "ModelProviderError",
@@ -29,6 +33,7 @@ __all__ = [
     "OpenAICompatibleProvider",
     "PermissionPolicy",
     "ReBounceHTTPServer",
+    "RelationshipEngine",
     "RuntimeResult",
     "RuntimeState",
     "SQLiteStore",

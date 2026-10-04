@@ -163,7 +163,7 @@ class OpenAICompatibleProvider:
     ) -> ModelResponse:
         request = self._build_request(messages, model=model, stream=False)
         try:
-            response = await asyncio.to_thread(urllib.request.urlopen, request, self.timeout)
+            response = await asyncio.to_thread(urllib.request.urlopen, request, timeout=self.timeout)
             try:
                 payload = json.loads(response.read().decode("utf-8"))
             finally:

@@ -1907,7 +1907,7 @@ Implementation currently includes:
 
 CI verification: GitHub Actions Stage 1 run #4 and Stage 0 run #8 both passed all six required Windows/Linux/macOS × Python 3.13/3.14 jobs on main commit 35f70d5d4718a98b9759f1f8d92242d21f693e49.
 
-72. STAGE 2 — REAL MEMORY ENGINE
+72. STAGE 2 — REAL MEMORY ENGINE [IMPLEMENTED — VERIFICATION PENDING]
 
 Build:
 - fact memory
@@ -1927,10 +1927,14 @@ Build:
 
 Build dedicated memory tests.
 
+Current implementation also exposes memory through the dashboard with search, type filtering, correction, forgetting and portable export.
+
 Success:
 ReBounce can remember meaningful details after long gaps.
 
-73. STAGE 3 — IDENTITY + RELATIONSHIP
+Current implementation: structured SQLite memories, deterministic extraction, retrieval, provenance/confidence/importance, contradiction supersession, correction, deletion and export.
+
+73. STAGE 3 — IDENTITY + RELATIONSHIP [IMPLEMENTED — VERIFICATION PENDING]
 
 Build:
 - stable identity
@@ -1945,7 +1949,9 @@ Build:
 Success:
 It feels like the same companion over time.
 
-74. STAGE 4 — POLISHED CHAT PRODUCT
+Current implementation: persisted interaction history, active-day tracking, recurring topics, lightweight interaction-style adaptation, milestones, goals and commitments.
+
+74. STAGE 4 — POLISHED CHAT PRODUCT [IMPLEMENTED — VERIFICATION PENDING]
 
 Build:
 - polished chat
@@ -1958,6 +1964,8 @@ Build:
 
 Success:
 The core product is enjoyable without an avatar.
+
+Current implementation: rendered web dashboard with Chat, Memory, Relationship, Activity, Models and Settings surfaces, plus Trust Center and data export.
 
 75. STAGE 5 — VOICE
 

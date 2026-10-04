@@ -89,7 +89,7 @@ class Handler(SimpleHTTPRequestHandler):
             return super().do_GET()
         if path == "/health":
             return self._json(200, {"status": "ok", "stage": 9})
-        if path == f"/v1/companions?user_id=":
+        if path == "/v1/companions":
             return self._json(200, {"companions": [self.state["companion"]]})
         if path.startswith("/v1/companions") and path.endswith("/dashboard"):
             return self._json(200, self.state)

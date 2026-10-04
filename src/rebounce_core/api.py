@@ -4,6 +4,8 @@ import asyncio
 import json
 import mimetypes
 import os
+import threading
+import time
 from argparse import ArgumentParser
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -414,6 +416,13 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
                     con.execute("UPDATE proactive_queue SET status = ? WHERE id = ? AND companion_id = ?", (status, parts[4], parts[2]))
                 return self._send(200, {"ok": True})
 
+            if len(parts) == 5 and parts[:2] == ["v1", "companions"] and parts[3] == "mcp":
+                self._identity(parts[2])
+                enabled = bool(data.get("enabled", False))
+                with self.app.store._connect() as con:
+                    con.execute("UPDATE mcp_servers SET enabled = ?, updated_at = ? WHERE id = ? AND companion_id = ?", (int(enabled), __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(), parts[4], parts[2]))
+                return self._send(200, _row_direct(self.app.store, "mcp_servers", parts[4], parts[2]) or {})
+
             if len(parts) == 4 and parts[:2] == ["v1", "companions"] and parts[3] == "settings":
                 identity = self._identity(parts[2])
                 name, personality = str(data.get("name", identity.name)).strip(), str(data.get("personality", identity.personality))
@@ -481,6 +490,40 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
         pass
 
 
+def _row_direct(store: SQLiteStore, table: str, item_id: str, cid: str) -> dict | None:
+    allowed = {"mcp_servers"}
+    if table not in allowed:
+        raise ValueError("invalid table")
+    with store._connect() as con:
+        row = con.execute(f"SELECT * FROM {table} WHERE id = ? AND companion_id = ?", (item_id, cid)).fetchone()
+    return dict(row) if row else None
+
+def _run_background_jobs(server: ReBounceHTTPServer, stop_event: threading.Event) -> None:
+    while not stop_event.is_set():
+        try:
+            companions = _table_all_companions(server.store)
+            for identity in companions:
+                try:
+                    manager = AutonomyManager(server.store, identity.user_id, identity.companion_id)
+                    manager.run_due()
+                    CuriosityEngine(server.store, identity.user_id, identity.companion_id).run_bounded()
+                except Exception:
+                    continue
+        finally:
+            stop_event.wait(30)
+
+def _table_all_companions(store: SQLiteStore) -> list[CompanionIdentity]:
+    with store._connect() as con:
+        rows = con.execute("SELECT * FROM companions ORDER BY created_at ASC").fetchall()
+    return [CompanionIdentity(
+        user_id=row["user_id"],
+        name=row["name"],
+        personality=row["personality"],
+        companion_id=UUID(row["id"]),
+        relationship_style=row["relationship_style"],
+        created_at=__import__("datetime").datetime.fromisoformat(row["created_at"]),
+    ) for row in rows]
+
 def _table_rows_direct(store: SQLiteStore, table: str, cid: str, order: str) -> list[dict]:
     allowed = {"notes","tasks","calendar_events","projects","mcp_servers"}
     if table not in allowed:
@@ -515,11 +558,15 @@ def main():
 
     server = create_local_api(SQLiteStore(args.db), provider, host=args.host, port=args.port)
     print(f"ReBounce dashboard: http://{args.host}:{args.port}")
+    stop_event = threading.Event()
+    worker = threading.Thread(target=_run_background_jobs, args=(server, stop_event), name="rebounce-background", daemon=True)
+    worker.start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        stop_event.set()
         server.server_close()
 
 

@@ -44,8 +44,15 @@ class CompanionRuntime:
         if not content.strip():
             raise ValueError("content must not be empty")
 
-        conversation_id = conversation_id or str(uuid4())
         now = datetime.now(timezone.utc).isoformat()
+
+        if conversation_id is None:
+            conversation_id = str(uuid4())
+            self.store.add_conversation(
+                conversation_id,
+                str(self.identity.companion_id),
+                now,
+            )
 
         self.store.save_message(
             str(uuid4()),

@@ -285,7 +285,7 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
 
             if len(parts) == 5 and parts[:2] == ["v1", "companions"] and parts[3] == "approvals":
                 identity = self._identity(parts[2])
-                approval = resolve_approval(self.app.store, parts[4], bool(data.get("approved", False)))
+                approval = resolve_approval(self.app.store, parts[4], bool(data.get("approved", False)), str(identity.companion_id))
                 if data.get("approved", False):
                     gateway = ToolGateway(self.app.store, identity.user_id, identity.companion_id)
                     approval["execution"] = gateway.execute(approval["tool_name"], json.loads(approval["args_json"]), approved=True)

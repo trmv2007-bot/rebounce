@@ -97,6 +97,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, {"conversation": self.state["conversations"][0], "messages": self.state["messages"]})
         if path == "/v1/config/provider":
             return self._json(200, self.provider)
+        if path.startswith("/v1/companions") and path.endswith("/export"):
+            return self._json(200, {"version": 1, "companion": self.state["companion"], "memories": self.state["memories"], "events": self.state["events"]})
         if path.startswith("/v1/companions") and path.endswith("/voice"):
             return self._json(200, self.state["voice"])
         if path.startswith("/v1/companions") and path.endswith("/presence"):

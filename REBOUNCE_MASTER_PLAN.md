@@ -1907,7 +1907,7 @@ Implementation currently includes:
 
 CI verification: GitHub Actions Stage 1 run #4 and Stage 0 run #8 both passed all six required Windows/Linux/macOS × Python 3.13/3.14 jobs on main commit 35f70d5d4718a98b9759f1f8d92242d21f693e49.
 
-72. STAGE 2 — REAL MEMORY ENGINE [IMPLEMENTED — VERIFICATION PENDING]
+72. STAGE 2 — REAL MEMORY ENGINE [VERIFIED — 2026-10-04]
 
 Build:
 - fact memory
@@ -1934,7 +1934,9 @@ ReBounce can remember meaningful details after long gaps.
 
 Current implementation: structured SQLite memories, deterministic extraction, retrieval, provenance/confidence/importance, contradiction supersession, correction, deletion and export.
 
-73. STAGE 3 — IDENTITY + RELATIONSHIP [IMPLEMENTED — VERIFICATION PENDING]
+Verification: GitHub Actions Stage 2-4 run #5 passed all six Windows/Linux/macOS × Python 3.13/3.14 jobs on main merge commit 4e4a1a3de782fc07793f3f7cb4a5d86933eb4ffd.
+
+73. STAGE 3 — IDENTITY + RELATIONSHIP [VERIFIED — 2026-10-04]
 
 Build:
 - stable identity
@@ -1951,7 +1953,9 @@ It feels like the same companion over time.
 
 Current implementation: persisted interaction history, active-day tracking, recurring topics, lightweight interaction-style adaptation, milestones, goals and commitments.
 
-74. STAGE 4 — POLISHED CHAT PRODUCT [IMPLEMENTED — VERIFICATION PENDING]
+Verification: Stage 1 regression run #10 and Stage 0 regression run #14 also passed all six Windows/Linux/macOS × Python 3.13/3.14 jobs on the same main merge commit.
+
+74. STAGE 4 — POLISHED CHAT PRODUCT [VERIFIED — 2026-10-04]
 
 Build:
 - polished chat
@@ -1966,6 +1970,8 @@ Success:
 The core product is enjoyable without an avatar.
 
 Current implementation: rendered web dashboard with Chat, Memory, Relationship, Activity, Models and Settings surfaces, plus Trust Center and data export.
+
+Rendered UI QA: every dashboard view and visible workflow was exercised locally, including chat, memory add/correct/forget, goal/milestone/commitment actions, provider configuration/test, identity settings and export. No browser errors were observed; the final dashboard render was visually inspected.
 
 75. STAGE 5 — VOICE
 

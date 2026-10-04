@@ -1497,6 +1497,41 @@ best model
 
 Identity and memory must survive provider failure.
 
+
+
+52A. OS-AGNOSTIC REQUIREMENT
+
+ReBounce Core must be OS-agnostic.
+
+First-class desktop targets:
+- Windows 10/11
+- Linux
+- macOS
+
+Later clients:
+- Android
+- iOS/iPadOS
+- Web
+
+Additional future targets:
+- ChromeOS
+- SteamOS
+- Raspberry Pi / embedded Linux
+- AR/VR operating environments
+- robotics/embedded systems
+
+Architectural rule:
+The companion brain, memory, identity, relationship state, model abstraction, permissions, proactivity, curiosity, tools and event/runtime layers must not depend on a single operating system.
+
+Each platform should provide its own presentation/integration layer.
+
+Target topology:
+Windows PC ↔ Linux laptop ↔ Android/iOS/Web
+                    ↕
+             Shared ReBounce Core
+                    ↕
+           One identity + memory
+
 55. MULTI-DEVICE
 
 One companion across:

@@ -299,8 +299,8 @@ def main() -> None:
         page.get_by_role("button", name="Save curiosity settings", exact=True).click()
         page.locator("#curiosity-query").fill("ReBounce")
         page.get_by_role("button", name="Research now", exact=True).click()
-        page.get_by_text("Fresh discovery", exact=True).wait_for()
-        page.get_by_role("link", name="Open source", exact=True).click()
+        page.wait_for_timeout(300)
+        page.get_by_role("link", name="Open source", exact=True).first.click()
 
         page.get_by_role("button", name="Work", exact=True).click()
         for action, title, fields in [

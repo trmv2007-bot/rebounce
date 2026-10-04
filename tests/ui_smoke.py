@@ -224,6 +224,10 @@ def main() -> None:
             page.get_by_text(heading, exact=True).wait_for()
 
         page.get_by_role("button", name="Chat", exact=True).click()
+        page.get_by_role("button", name="New chat", exact=True).click()
+        for prompt in ["What do you remember?", "Plan next step", "Work on a goal"]:
+            page.get_by_role("button", name=prompt, exact=True).click()
+        page.get_by_role("button", name="↻", exact=True).click()
         page.locator("#chat-input").fill("hello from smoke")
         page.get_by_role("button", name="Send", exact=True).click()
         page.get_by_text("Mock companion reply", exact=True).wait_for()
@@ -236,6 +240,8 @@ def main() -> None:
         page.locator("#edit-memory-content").fill("Corrected memory")
         page.locator("[data-save-memory='m1']").click()
         page.locator("[data-forget-memory='m1']").click()
+        page.locator("#memory-search").fill("Smoke")
+        page.locator("#memory-type").select_option("preference")
 
         page.get_by_role("button", name="Relationship", exact=True).click()
         for action, title, field in [
@@ -246,12 +252,16 @@ def main() -> None:
             page.get_by_role("button", name=action, exact=True).click()
             page.locator(field).fill(title)
             page.get_by_role("button", name=re.sub(r"^Add ", "Save ", action), exact=True).click()
+        page.get_by_role("button", name="Complete", exact=True).click()
 
         page.get_by_role("button", name="Voice", exact=True).click()
         page.get_by_role("button", name="Start talking", exact=True).click()
         page.evaluate("""const r=window.__lastRecognition; const result={isFinal:true,0:{transcript:'voice smoke'}}; r.onresult({resultIndex:0,results:{0:result,length:1}});""")
         page.wait_for_timeout(500)
         page.get_by_role("button", name="Stop voice", exact=True).click()
+        page.locator("#voice-language").select_option("en-IN")
+        page.locator("#voice-rate").fill("1.1")
+        page.locator("#voice-pitch").fill("0.9")
         page.get_by_role("button", name="Save voice settings", exact=True).click()
 
         page.get_by_role("button", name="Presence", exact=True).click()
@@ -263,7 +273,12 @@ def main() -> None:
 
         page.get_by_role("button", name="Focus", exact=True).click()
         page.locator("#attention-activity").select_option("deep_work")
+        page.locator("#quiet-start").fill("21:30")
+        page.locator("#quiet-end").fill("08:30")
+        page.locator("#proactive-budget").fill("5")
+        page.locator("#proactive-enabled").uncheck()
         page.get_by_role("button", name="Save attention", exact=True).click()
+        page.locator("#proactive-enabled").check()
         page.get_by_role("button", name="Add reminder", exact=True).click()
         page.locator("#reminder-title").fill("Smoke reminder")
         page.locator("#reminder-due").fill("2026-10-05T10:00")
@@ -278,6 +293,7 @@ def main() -> None:
         page.locator("#curiosity-query").fill("ReBounce")
         page.get_by_role("button", name="Research now", exact=True).click()
         page.get_by_text("Fresh discovery", exact=True).wait_for()
+        page.get_by_role("link", name="Open source", exact=True).click()
 
         page.get_by_role("button", name="Work", exact=True).click()
         for action, title, fields in [
@@ -299,6 +315,12 @@ def main() -> None:
         page.get_by_role("button", name="Execute", exact=True).click()
         page.locator("#tool-output").wait_for()
         page.get_by_role("button", name="Approve", exact=True).click()
+        page.locator("#tool-name").select_option("local_files.write")
+        page.locator("#tool-args").fill('{"path":"x.txt","content":"x"}')
+        page.get_by_role("button", name="Execute", exact=True).click()
+        page.get_by_role("button", name="Reject", exact=True).click()
+        for resource in ["local_files", "browser", "github", "mcp"]:
+            page.get_by_role("button", name="Enable", exact=True).nth(0).click()
 
         page.get_by_role("button", name="Activity", exact=True).click()
         page.get_by_role("button", name="Refresh", exact=True).click()

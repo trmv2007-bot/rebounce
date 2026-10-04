@@ -52,6 +52,40 @@ That means the system needs durable identity, long-term memory, relationship con
 
 The avatar, voice, web app, desktop app, phone app, and future wearable are surfaces. The companion runtime is the core.
 
+
+1A. USER-NAMED COMPANION
+
+ReBounce is the platform/product name, not the permanent name of the user's companion.
+
+During first-time setup after login, the user should choose the companion's name.
+
+Concept:
+ReBounce
+  └── User account
+       └── Companion
+            ├── user-selected name
+            ├── identity
+            ├── personality
+            ├── voice
+            ├── appearance
+            └── relationship history
+
+The chosen name becomes part of the companion identity and persists across sessions and devices.
+
+The user should be able to rename the companion later through settings, with the system preserving continuity rather than treating a rename as a new companion unless the user explicitly chooses to create a new identity.
+
+Potential onboarding:
+1. Sign in / create account
+2. “What do you want to call your companion?”
+3. Optional personality/setup choices
+4. Companion introduction using the chosen name
+
+Important:
+- The platform remains ReBounce.
+- Each user's companion can have a distinct identity/name.
+- Names must not be used to imply the AI is a human.
+- The architecture must support multiple companion identities under one user account in the future.
+
 2. WHAT THE CURRENT CATEGORY ALREADY DOES
 
 Research shows the companion category has moved well beyond simple character prompts.
@@ -2403,7 +2437,7 @@ REJECTED
 
 | Decision | Status | Reason |
 | --- | --- | --- |
-| One persistent companion identity | ADOPTED | Core product |
+| One persistent companion identity | ADOPTED | Core product; user chooses companion name |
 | Model/provider independence | ADOPTED | Prevent lock-in |
 | Memory as first-class subsystem | ADOPTED | Continuity |
 | User memory controls | ADOPTED | Trust |

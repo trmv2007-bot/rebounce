@@ -36,6 +36,14 @@ from .capabilities import (
     set_presence,
     set_voice_config,
 )
+from .advanced import (
+    DeviceSyncManager,
+    EmbodimentManager,
+    LongRunningAgent,
+    PhysicalWorldManager,
+    SharedActivityManager,
+    VisionManager,
+)
 
 WEB_ROOT = Path(__file__).resolve().parents[2] / "web"
 MAX_BODY = 1024 * 1024
@@ -105,7 +113,7 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
         parsed, parts = self._parts()
         try:
             if parsed.path == "/health":
-                return self._send(200, {"status": "ok", "service": "rebounce", "stage": 9})
+                return self._send(200, {"status": "ok", "service": "rebounce", "stage": 15})
             if parsed.path in {"/", "/index.html"}:
                 return self._static("index.html")
             if len(parts) == 2 and parts[0] == "assets":
@@ -145,6 +153,12 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
                         "approvals": list_approvals(self.app.store, cid),
                         "permissions": self._permissions_json(cid),
                         "tools": TOOL_SPECS_JSON(),
+                        "vision": VisionManager(self.app.store, identity.user_id, identity.companion_id).status(),
+                        "agent": LongRunningAgent(self.app.store, identity.user_id, identity.companion_id).state(),
+                        "devices": DeviceSyncManager(self.app.store, identity.user_id, identity.companion_id).state(),
+                        "embodiment": EmbodimentManager(self.app.store, identity.user_id, identity.companion_id).state(),
+                        "together": SharedActivityManager(self.app.store, identity.user_id, identity.companion_id).state(),
+                        "physical": PhysicalWorldManager(self.app.store, identity.user_id, identity.companion_id).state(),
                     })
                 if len(parts) == 5 and parts[3] == "conversations":
                     conversation = self.app.store.get_conversation(parts[4])
@@ -163,7 +177,16 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
                 if len(parts) == 4 and parts[3] == "events":
                     return self._send(200, {"events": self.app.store.list_events(cid, 100)})
                 if len(parts) == 4 and parts[3] == "export":
-                    return self._send(200, self.app.store.export_data(cid))
+                    data = self.app.store.export_data(cid)
+                    data["advanced"] = {
+                        "vision": VisionManager(self.app.store, identity.user_id, identity.companion_id).status(),
+                        "agent": LongRunningAgent(self.app.store, identity.user_id, identity.companion_id).state(),
+                        "devices": DeviceSyncManager(self.app.store, identity.user_id, identity.companion_id).state(),
+                        "embodiment": EmbodimentManager(self.app.store, identity.user_id, identity.companion_id).state(),
+                        "together": SharedActivityManager(self.app.store, identity.user_id, identity.companion_id).state(),
+                        "physical": PhysicalWorldManager(self.app.store, identity.user_id, identity.companion_id).state(),
+                    }
+                    return self._send(200, data)
                 if len(parts) == 4 and parts[3] == "conversations":
                     return self._send(200, {"conversations": self.app.store.list_conversations(cid)})
 
@@ -190,6 +213,18 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
                     return self._send(200, {parts[3]: _table_rows_direct(self.app.store, table, cid, order)})
                 if parts[3] == "mcp":
                     return self._send(200, {"servers": _table_rows_direct(self.app.store, "mcp_servers", cid, "updated_at DESC")})
+                if parts[3] == "vision":
+                    return self._send(200, VisionManager(self.app.store, identity.user_id, identity.companion_id).status())
+                if parts[3] == "agent":
+                    return self._send(200, LongRunningAgent(self.app.store, identity.user_id, identity.companion_id).state())
+                if parts[3] == "devices":
+                    return self._send(200, DeviceSyncManager(self.app.store, identity.user_id, identity.companion_id).state())
+                if parts[3] == "embodiment":
+                    return self._send(200, EmbodimentManager(self.app.store, identity.user_id, identity.companion_id).state())
+                if parts[3] == "together":
+                    return self._send(200, SharedActivityManager(self.app.store, identity.user_id, identity.companion_id).state())
+                if parts[3] == "physical":
+                    return self._send(200, PhysicalWorldManager(self.app.store, identity.user_id, identity.companion_id).state())
 
             if parsed.path == "/v1/config/provider":
                 return self._send(200, self._provider_public())
@@ -471,7 +506,7 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
 
     def _permissions_json(self, cid):
         from .capabilities import load_policy
-        resources = {"conversation","memory","local_files","browser","github","mcp","notes","tasks","calendar","projects","voice","presence","email","payments"}
+        resources = {"conversation","memory","local_files","browser","github","mcp","notes","tasks","calendar","projects","voice","presence","email","payments","screen","camera","location","device_sync","delegation","avatar","shared_activities","physical_devices","wearable","smart_home","robotics","haptics"}
         policy = load_policy(self.app.store, str(cid))
         return [policy.describe(resource) for resource in sorted(resources)]
 
@@ -509,6 +544,7 @@ def _run_background_jobs(server: ReBounceHTTPServer, stop_event: threading.Event
                     manager = AutonomyManager(server.store, identity.user_id, identity.companion_id)
                     manager.run_due()
                     CuriosityEngine(server.store, identity.user_id, identity.companion_id).run_bounded()
+                    LongRunningAgent(server.store, identity.user_id, identity.companion_id).tick()
                 except Exception:
                     continue
         finally:

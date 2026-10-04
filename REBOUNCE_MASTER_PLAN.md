@@ -1857,7 +1857,7 @@ Companion brain
 
 Do not reverse this order simply because avatar work is visually exciting.
 
-70. STAGE 0 — FOUNDATION
+70. STAGE 0 — FOUNDATION [IMPLEMENTED — VERIFICATION PENDING]
 
 Goal:
 Define the real system before building lots of UI.
@@ -2816,3 +2816,73 @@ The devices may change.
 The underlying principle should not:
 
 ReBounce becomes more capable over time without becoming less understandable, less portable, or less controllable.
+
+
+126. STAGE 0 ENGINEERING BASELINE — 2026-10-04
+
+Status:
+IMPLEMENTED — verification pending on a real development machine.
+
+Repository baseline:
+- Python 3.13+ core
+- Standard-library-first Stage 0
+- SQLite durable store
+- model-provider protocol
+- deterministic permission policy
+- event model
+- companion identity contract
+- minimal companion runtime
+- automated unittest coverage
+- OS-agnostic domain layer
+
+Stack decision:
+- Language: Python 3.13+
+- Core runtime dependencies: standard library only for Stage 0
+- Storage: SQLite
+- Async style: Python asyncio where runtime contracts require it
+- Web/API framework: deferred until Stage 1 needs a concrete API surface
+- Frontend: deferred until core behavior is validated
+- Model SDK/provider dependency: deferred behind ModelProvider
+- Desktop framework: deferred until desktop presence stage
+
+Reason for the dependency-light foundation:
+The companion core should remain portable and easy to run on Windows, Linux and macOS. Python's sqlite3 module provides a built-in SQL interface and SQLite is specifically suitable for internal application storage and later migration to a larger database if required. SQLAlchemy's current asyncio/SQLite support was reviewed, but introducing an ORM is intentionally deferred until the storage/query complexity justifies it.
+
+Engineering contracts now present in the repository:
+- CompanionIdentity
+- ModelProvider / ModelMessage / ModelResponse
+- Event / EventType
+- PermissionPolicy / ActionLevel
+- SQLiteStore
+- CompanionRuntime
+- Stage 0 unittest suite
+
+Stage 0 storage domains currently represented:
+companions
+conversations
+messages
+memories
+events
+permissions
+
+Verification required before declaring Stage 0 fully complete:
+- install package on Windows
+- install package on Linux
+- install package on macOS
+- run Stage 0 tests
+- verify a fresh database is created correctly
+- verify conversation/message/event persistence
+- verify deterministic permission behavior
+- verify Python 3.14 compatibility
+
+Current implementation intentionally does NOT include:
+- real model provider
+- memory retrieval/consolidation
+- authentication
+- UI
+- voice
+- web browsing
+- tool execution
+- autonomous background jobs
+
+Those belong to later stages.

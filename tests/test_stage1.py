@@ -145,9 +145,14 @@ class Stage1Tests(unittest.TestCase):
             default_model="local-model",
         )
 
+        def fake_urlopen(request, *, timeout):
+            self.assertEqual(request.full_url, "http://127.0.0.1:8080/v1/chat/completions")
+            self.assertIsInstance(timeout, float)
+            return fake
+
         with patch(
             "rebounce_core.provider.urllib.request.urlopen",
-            return_value=fake,
+            side_effect=fake_urlopen,
         ):
             response = asyncio.run(
                 provider.generate([ModelMessage(ModelRole.USER, "hello")])

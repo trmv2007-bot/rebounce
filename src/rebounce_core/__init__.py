@@ -1,13 +1,17 @@
-"""ReBounce companion core.
+"""ReBounce companion core."""
 
-Stage 0 intentionally keeps the core dependency-light and cross-platform.
-"""
-
+from .api import ReBounceHTTPServer, create_local_api
 from .events import Event, EventType
 from .identity import CompanionIdentity
-from .models import ModelMessage, ModelResponse, ModelRole
+from .models import ModelMessage, ModelResponse, ModelRole, ModelStreamChunk
 from .permissions import ActionLevel, PermissionPolicy
-from .runtime import CompanionRuntime, RuntimeResult
+from .provider import (
+    ModelProvider,
+    ModelProviderError,
+    OpenAICompatibleProvider,
+    StubModelProvider,
+)
+from .runtime import CompanionRuntime, RuntimeResult, RuntimeState
 from .storage import SQLiteStore
 
 __all__ = [
@@ -17,9 +21,17 @@ __all__ = [
     "Event",
     "EventType",
     "ModelMessage",
+    "ModelProvider",
+    "ModelProviderError",
     "ModelResponse",
     "ModelRole",
+    "ModelStreamChunk",
+    "OpenAICompatibleProvider",
     "PermissionPolicy",
+    "ReBounceHTTPServer",
     "RuntimeResult",
+    "RuntimeState",
     "SQLiteStore",
+    "StubModelProvider",
+    "create_local_api",
 ]

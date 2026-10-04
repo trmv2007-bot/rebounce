@@ -27,3 +27,15 @@ class ModelResponse:
     model_name: str
     provider_name: str
     finish_reason: str = "stop"
+
+
+@dataclass(frozen=True, slots=True)
+class ModelStreamChunk:
+    content: str
+    model_name: str
+    provider_name: str
+    finish_reason: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.content and self.finish_reason is None:
+            raise ValueError("stream chunk must contain content or a finish reason")

@@ -322,6 +322,7 @@ def main() -> None:
         page.get_by_role("button", name="Execute", exact=True).click()
         page.locator("#tool-output").wait_for()
         page.get_by_role("button", name="Approve", exact=True).click()
+        page.locator("button[data-permission='local_files']").click()
         page.locator("#tool-name").select_option("local_files.write")
         page.locator("#tool-args").fill('{"path":"x.txt","content":"x"}')
         page.get_by_role("button", name="Execute", exact=True).click()

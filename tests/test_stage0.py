@@ -41,9 +41,12 @@ class Stage0Tests(unittest.TestCase):
             self.assertEqual(result.provider, "stub")
             self.assertIn("Stage 0", result.content)
 
-            with sqlite3.connect(db) as con:
+            con = sqlite3.connect(db)
+            try:
                 message_count = con.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
                 event_count = con.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+            finally:
+                con.close()
 
             self.assertEqual(message_count, 2)
             self.assertEqual(event_count, 2)

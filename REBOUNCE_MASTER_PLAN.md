@@ -2505,6 +2505,23 @@ Do not start with:
 - multi-agent swarm
 - child-targeted companion
 
+111A. CI VERIFICATION / FAILURE-RECOVERY RULE
+
+GitHub Actions is part of the definition of done.
+
+For every code change that triggers CI:
+1. Check the resulting GitHub Actions run.
+2. Inspect every required job and its conclusion.
+3. If any required job fails, inspect the failure logs.
+4. Diagnose the actual root cause.
+5. Fix the code/workflow/test.
+6. Commit the fix.
+7. Check the new GitHub Actions run again.
+8. Repeat until all required checks are green.
+9. Do not mark the stage complete while required CI checks are red or unverified.
+
+An old failed run does not count as current verification; verification must correspond to the current/fixed commit.
+
 112. STAGE COMPLETION RULE
 
 A stage is not “done” because code compiles.

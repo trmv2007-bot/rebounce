@@ -114,6 +114,10 @@ class Handler(SimpleHTTPRequestHandler):
         size = int(self.headers.get("Content-Length", "0"))
         body = json.loads(self.rfile.read(size) or b"{}")
         if path.startswith("/v1/companions/") and path.endswith("/chat"):
+            self.state["messages"].extend([
+                {"role": "user", "content": body.get("content", "")},
+                {"role": "assistant", "content": "Mock companion reply"},
+            ])
             return self._json(200, {"content": "Mock companion reply", "provider": "stub", "model": "stub", "conversation_id": CONV, "event_id": "e2"})
         if path == "/v1/config/provider":
             self.provider = {"provider": body.get("provider", "stub"), "base_url": body.get("base_url", ""), "model": body.get("model", "mock"), "configured": body.get("provider") != "stub"}

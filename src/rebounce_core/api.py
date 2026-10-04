@@ -159,8 +159,19 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
                 return self._send(201, {"companion_id": str(identity.companion_id), "name": identity.name})
 
             if len(parts) == 4 and parts[:2] == ["v1", "companions"] and parts[3] == "chat":
-                result = asyncio.run(self._runtime(parts[2]).handle_user_message(
-                    str(data["content"]), conversation_id=data.get("conversation_id"), model=data.get("model")
+                runtime = self._runtime(parts[2])
+                content = str(data["content"])
+                if bool(data.get("stream")):
+                    return self._stream_chat(
+                        runtime,
+                        content,
+                        data.get("conversation_id"),
+                        data.get("model"),
+                    )
+                result = asyncio.run(runtime.handle_user_message(
+                    content,
+                    conversation_id=data.get("conversation_id"),
+                    model=data.get("model"),
                 ))
                 return self._send(200, {
                     "content": result.content, "provider": result.provider, "model": result.model,
@@ -217,6 +228,42 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
             return self._send(400, {"error": str(exc)})
         except Exception as exc:
             return self._send(502, {"error": str(exc)})
+
+    def _stream_chat(self, runtime, content, conversation_id, model):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "close")
+        self.end_headers()
+
+        async def emit():
+            try:
+                async for chunk in runtime.stream_user_message(
+                    content,
+                    conversation_id=conversation_id,
+                    model=model,
+                ):
+                    payload = {
+                        "content": chunk.content,
+                        "provider": chunk.provider_name,
+                        "model": chunk.model_name,
+                        "finish_reason": chunk.finish_reason,
+                    }
+                    self._write_sse(payload)
+                self._write_sse({
+                    "done": True,
+                    "conversation_id": runtime.state.active_conversation_id,
+                    "model": runtime.state.last_model,
+                })
+            except Exception as exc:
+                self._write_sse({"error": str(exc)[:500], "done": True})
+
+        asyncio.run(emit())
+
+    def _write_sse(self, payload):
+        data = ("data: " + json.dumps(payload, ensure_ascii=False) + "\n\n").encode("utf-8")
+        self.wfile.write(data)
+        self.wfile.flush()
 
     def do_PATCH(self):
         parsed, parts = self._parts()

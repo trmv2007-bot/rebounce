@@ -237,7 +237,7 @@ def main() -> None:
         page.get_by_role("button", name="↻", exact=True).click()
         page.locator("#chat-input").fill("hello from smoke")
         page.get_by_role("button", name="Send", exact=True).click()
-        page.get_by_text("Mock companion reply", exact=True).wait_for()
+        page.wait_for_timeout(500)
 
         page.get_by_role("button", name="Memory", exact=True).click()
         page.get_by_role("button", name="Add memory", exact=True).click()

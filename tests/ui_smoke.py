@@ -319,8 +319,9 @@ def main() -> None:
         page.locator("#tool-args").fill('{"path":"x.txt","content":"x"}')
         page.get_by_role("button", name="Execute", exact=True).click()
         page.get_by_role("button", name="Reject", exact=True).click()
-        for resource in ["local_files", "browser", "github", "mcp"]:
-            page.get_by_role("button", name="Enable", exact=True).nth(0).click()
+        permission_buttons = page.locator("button[data-permission]")
+        for i in range(permission_buttons.count()):
+            permission_buttons.nth(i).click()
 
         page.get_by_role("button", name="Activity", exact=True).click()
         page.get_by_role("button", name="Refresh", exact=True).click()

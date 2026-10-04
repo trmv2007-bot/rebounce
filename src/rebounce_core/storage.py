@@ -118,6 +118,21 @@ class SQLiteStore:
                 ),
             )
 
+    def add_conversation(
+        self,
+        conversation_id: str,
+        companion_id: str,
+        created_at: str,
+    ) -> None:
+        with self._connect() as con:
+            con.execute(
+                """
+                INSERT INTO conversations(id, companion_id, created_at, updated_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (conversation_id, companion_id, created_at, created_at),
+            )
+
     def save_message(
         self,
         message_id: str,

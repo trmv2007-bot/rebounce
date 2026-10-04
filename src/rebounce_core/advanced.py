@@ -73,15 +73,21 @@ class VisionManager:
         self.store, self.user_id, self.companion_id = store, user_id, companion_id
 
     def status(self) -> dict[str, Any]:
+        now = now_iso()
+        with self.store._connect() as con:
+            con.execute(
+                "UPDATE vision_sessions SET active=0 WHERE companion_id=? AND expires_at<=?",
+                (str(self.companion_id), now),
+            )
         active = _row(
             self.store,
             "SELECT * FROM vision_sessions WHERE companion_id=? AND active=1 ORDER BY started_at DESC LIMIT 1",
             (str(self.companion_id),),
         )
         context = _row(
-            "SELECT * FROM vision_context WHERE companion_id=? ORDER BY created_at DESC LIMIT 1"
-            if active else "SELECT * FROM vision_context WHERE companion_id=? AND expires_at>? ORDER BY created_at DESC LIMIT 1",
-            (str(self.companion_id),) if active else (str(self.companion_id), now_iso()),
+            self.store,
+            "SELECT * FROM vision_context WHERE companion_id=? AND expires_at>? ORDER BY created_at DESC LIMIT 1",
+            (str(self.companion_id), now),
         )
         return {
             "active_session": bool(active),

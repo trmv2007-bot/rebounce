@@ -1,59 +1,80 @@
 # ReBounce
 
-ReBounce is a persistent personal AI companion project.
+ReBounce is a persistent personal AI companion.
 
-The long-term goal is one durable companion identity that can evolve from conversation into memory, relationship continuity, voice, presence, proactive behavior, curiosity, tools, vision, multi-device continuity and richer digital/physical embodiment.
+## Current state
 
-## Stage 1 — Minimal Companion Brain
+Stages 0–4 are implemented as a headless companion core plus a polished web dashboard.
 
-Stage 1 turns the Stage 0 foundation into a usable headless companion runtime.
+### Stage 2 — Real memory
+- structured facts, preferences, projects, goals and episodic memories
+- deterministic extraction plus model-ready memory contract
+- relevance retrieval
+- contradiction handling through superseded history
+- provenance, confidence and importance
+- user correction and deletion
+- portable JSON export
 
-Included:
+### Stage 3 — Identity + relationship
+- stable user-named identity
+- interaction continuity
+- active-day and interaction tracking
+- recurring-topic tracking
+- lightweight preference adaptation
+- milestones
+- goals
+- commitments
+- relationship context injected into the model
 
-- persistent, user-named companion identity
-- conversation persistence and replay
-- provider-neutral model adapter
-- OpenAI-compatible adapter for local or remote `/v1/chat/completions` servers
-- streaming responses
-- runtime current state
-- model-unavailable events
-- localhost HTTP API
-- cross-platform automated tests
+### Stage 4 — Dashboard
+- Chat
+- conversation history
+- Memory viewer/search/filter
+- Relationship/timeline
+- Goals and commitments
+- Activity/audit history
+- Model/provider settings
+- Trust Center
+- Companion identity settings
+- Data export
 
-The API defaults to `127.0.0.1`; it is intentionally a local development surface rather than an internet-facing service.
+The dashboard is intentionally avatar-free for now. Voice and desktop presence remain later stages.
 
-## Project layout
-
-- `src/rebounce_core/` — domain/runtime/API foundation
-- `tests/` — automated tests
-- `REBOUNCE_MASTER_PLAN.md` — single living product/research source of truth
-
-## Run
-
-Create a virtual environment and install the package:
+## Run locally
 
     python -m venv .venv
-    # Windows: .venv\\Scripts\\activate
+    # Windows: .venv\Scripts\activate
     # Linux/macOS: source .venv/bin/activate
     python -m pip install -e .
 
-Run all tests:
-
-    python -m unittest discover -s tests -v
-
-## Start the local API
-
-The Stage 1 API can run immediately with the deterministic stub:
+Start:
 
     python -m rebounce_core.api
 
-For an actual local model, point it at an OpenAI-compatible server:
+Open:
+
+    http://127.0.0.1:4100/
+
+The default provider is the deterministic stub, so the UI can be explored without an API key.
+
+## Use a real model
+
+Any OpenAI-compatible chat-completions server can be used:
 
     python -m rebounce_core.api \
       --model-url http://127.0.0.1:8080/v1 \
       --model your-model
 
-The following environment variables are also supported:
+For a provider requiring a key:
+
+    python -m rebounce_core.api \
+      --model-url https://api.example.com/v1 \
+      --model your-model \
+      --api-key YOUR_KEY
+
+The dashboard also exposes Model settings. API keys are held by the running process/provider adapter and are not written into companion memory or SQLite.
+
+Environment variables:
 
     REBOUNCE_DB
     REBOUNCE_HOST
@@ -62,53 +83,36 @@ The following environment variables are also supported:
     REBOUNCE_MODEL
     REBOUNCE_MODEL_API_KEY
 
-The default bind address is localhost only.
-
-## Connect a local model from Python
-
-    from rebounce_core.provider import OpenAICompatibleProvider
-
-    provider = OpenAICompatibleProvider(
-        "http://127.0.0.1:8080/v1",
-        default_model="your-model",
-    )
-
-The companion runtime remains independent of the provider, so the model can be replaced without replacing the companion identity or SQLite data.
-
-## Local API
-
-Endpoints:
+## API
 
     GET  /health
+    GET  /v1/companions?user_id=...
     POST /v1/companions
-    GET  /v1/companions/{companion_id}
-    POST /v1/companions/{companion_id}/chat
+    GET  /v1/companions/{id}
+    GET  /v1/companions/{id}/dashboard
+    GET  /v1/companions/{id}/conversations/{conversation_id}
+    POST /v1/companions/{id}/chat
+    GET  /v1/companions/{id}/memories
+    POST /v1/companions/{id}/memories
+    PATCH /v1/companions/{id}/memories/{memory_id}
+    DELETE /v1/companions/{id}/memories/{memory_id}
+    GET  /v1/companions/{id}/relationship
+    POST /v1/companions/{id}/milestones
+    POST /v1/companions/{id}/goals
+    PATCH /v1/companions/{id}/goals/{goal_id}
+    POST /v1/companions/{id}/commitments
+    GET  /v1/companions/{id}/events
+    GET  /v1/companions/{id}/export
+    PATCH /v1/companions/{id}/settings
+    GET/POST /v1/config/provider
+    POST /v1/config/provider/test
 
-Create a companion:
+## Verification
 
-    {
-      "user_id": "user-1",
-      "name": "Nova",
-      "personality": "calm and direct"
-    }
+Run:
 
-Chat:
+    python -m unittest discover -s tests -v
 
-    {
-      "content": "Hello",
-      "conversation_id": "optional-existing-conversation-id",
-      "model": "optional-model-name",
-      "stream": false
-    }
+GitHub Actions validates the suite on Windows, Linux and macOS with Python 3.13 and 3.14.
 
-Set `stream` to `true` for Server-Sent Events. Conversation history is loaded from SQLite and sent through the provider adapter on every turn.
-
-## Stage 2 next
-
-Stage 2 adds the real memory engine: facts, episodes, entities, preferences, projects, retrieval, consolidation, provenance, contradiction handling, correction, deletion and export.
-
-## Planning rule
-
-`REBOUNCE_MASTER_PLAN.md` is the single living product/research source of truth.
-
-Future ideas belong in that file first. Build stages should only absorb an idea after we decide it is ready.
+`REBOUNCE_MASTER_PLAN.md` remains the single living product/research source of truth.

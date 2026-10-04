@@ -123,8 +123,7 @@ class Stage24Tests(unittest.TestCase):
             relationship=RelationshipEngine(self.store),
         )
         asyncio.run(runtime.handle_user_message("How is my project going?"))
-        system = "
-".join(
+        system = "\n".join(
             m.content for m in provider.calls[0] if m.role == ModelRole.SYSTEM
         )
         self.assertIn("User is building ReBounce", system)

@@ -54,7 +54,7 @@ class StubModelProvider:
     ) -> ModelResponse:
         del messages
         return ModelResponse(
-            content="[Stage 1] Companion runtime is connected. Model provider is ready.",
+            content="[Stage 1] Companion runtime is connected; Stage 0 foundation remains intact.",
             model_name=model or "stub",
             provider_name=self.name,
         )

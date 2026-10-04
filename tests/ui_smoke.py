@@ -238,8 +238,7 @@ def main() -> None:
             page.get_by_role("button", name=prompt, exact=True).click()
         page.get_by_role("button", name="↻", exact=True).click()
         page.locator("#chat-input").fill("hello from smoke")
-        with page.expect_request("**/v1/companions/*/chat"):
-            page.locator("#chat-form").evaluate("form => form.requestSubmit()")
+        page.get_by_role("button", name="Send", exact=True).click()
         page.wait_for_timeout(500)
         page.locator("#chat-input").wait_for()
 

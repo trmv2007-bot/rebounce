@@ -63,17 +63,11 @@ class CompanionRuntime:
 
         memories = self.memory.context_for(self.identity.companion_id, query)
         if memories:
-            text += "
-
-Relevant user memory:
-" + memories
+            text += "\n\nRelevant user memory:\n" + memories
 
         relationship = self.relationship.context_for(str(self.identity.companion_id))
         if relationship:
-            text += "
-
-Relationship continuity:
-" + relationship
+            text += "\n\nRelationship continuity:\n" + relationship
 
         return ModelMessage(ModelRole.SYSTEM, text)
 

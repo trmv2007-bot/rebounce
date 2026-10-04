@@ -116,3 +116,4 @@ document.addEventListener("input",e=>{if(!state.dashboard)return;if(e.target.id=
 if("speechSynthesis"in window)speechSynthesis.onvoiceschanged=()=>populateVoiceList(state.dashboard?.voice?.voice_name||"");
 async function boot(){try{const d=await api(`/v1/companions?user_id=${encodeURIComponent(state.userId)}`);if(d.companions?.length){const saved=safeStorage.get("rebounce_companion_id");state.companion=d.companions.find(c=>c.companion_id===saved)||d.companions[0];safeStorage.set("rebounce_companion_id",state.companion.companion_id);await load()}shell()}catch(err){document.querySelector("#app").innerHTML=`<div class="content"><div class="card"><h2>ReBounce couldn't start</h2><p class="muted">${esc(err.message)}</p></div></div>`}}
 boot();
+window.ReBounceBridge={get state(){return state},get dashboard(){return state.dashboard},api,cid,load,render,shell,esc};

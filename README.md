@@ -40,6 +40,27 @@ Stages 0–4 are implemented as a headless companion core plus a polished web da
 
 The dashboard is intentionally avatar-free for now. Voice and desktop presence remain later stages.
 
+## Current implementation
+
+Stages 0–15 are implemented as a local-first companion core plus the web dashboard.
+
+### Stages 5–9
+- Voice with browser speech adapters and durable settings
+- Desktop presence shell
+- Bounded reminders, attention and proactive queue
+- Bounded curiosity with separate untrusted research results
+- Personal workbench, permissions, approvals and audited tools
+
+### Stages 10–15
+- Vision sessions with temporary permission, expiry and ephemeral visual context; raw captures are represented only by hashes
+- Long-running plans/jobs with approval, durable checkpoints, recovery and bounded specialist delegation
+- Multi-device registry, ordered sync events, offline queues and short-lived handoff tokens
+- Avatar/embodiment profiles with CSS-orb, Live2D/VRM references, expressions, animation settings and persistent room objects
+- Shared watch/listen/game/study/creative activity state and event timelines
+- Wearable/AR/physical-device registry with disabled-by-default real-device controls and a simulator for safe command testing
+
+The advanced stages are intentionally adapter-first: model identity, permissions and durable state remain separate from UI bodies, devices and external hardware.
+
 ## Run locally
 
     python -m venv .venv

@@ -2931,3 +2931,48 @@ Current implementation intentionally does NOT include:
 - autonomous background jobs
 
 Those belong to later stages.
+
+127. STAGES 10–15 IMPLEMENTATION — 2026-10-04
+
+Status:
+IMPLEMENTED — automated verification pending.
+
+Stage 10 — Vision / Screen
+- expiring screen-sharing sessions
+- explicit screen permission
+- ephemeral visual context
+- screenshot content represented by a SHA-256 hash rather than persisted raw capture
+- window/application/URL context fields
+
+Stage 11 — Long-running Agent
+- durable plans and jobs
+- approval-required plans by default
+- durable checkpoints
+- stale-worker recovery
+- bounded specialist delegation
+
+Stage 12 — Multi-device
+- device registry and heartbeats
+- ordered synchronization event cursor
+- offline operation queue
+- expiring handoff tokens containing minimal continuity cursors
+
+Stage 13 — Advanced Embodiment
+- embodiment profiles
+- CSS-orb / Live2D / VRM asset references
+- expression and animation configuration
+- persistent companion room and room objects
+
+Stage 14 — Shared Activities
+- watch, listen, game, study and creative activity sessions
+- pause/complete state
+- activity event timeline
+- persistent activity state
+
+Stage 15 — Wearable / AR / Physical
+- adapter-first physical device registry
+- disabled-by-default real-device controls
+- explicit permission layers for smart-home, wearable and robotics resources
+- approval-required physical commands
+- simulator transport for safe testing
+

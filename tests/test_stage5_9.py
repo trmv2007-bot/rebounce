@@ -58,10 +58,9 @@ class Stage59Tests(unittest.TestCase):
     def test_quiet_hours_save_proactive_work(self) -> None:
         cid = str(self.identity.companion_id)
         now = datetime.now().astimezone()
-        start = (now - timedelta(minutes=1)).strftime("%H:%M")
-        end = (now + timedelta(minutes=1)).strftime("%H:%M")
-        if start == end:
-            end = (now + timedelta(minutes=2)).strftime("%H:%M")
+        # Keep the window wide enough to survive slow CI runners crossing a minute boundary.
+        start = (now - timedelta(minutes=2)).strftime("%H:%M")
+        end = (now + timedelta(minutes=2)).strftime("%H:%M")
         set_attention(self.store, cid, {"activity": "available", "quiet_start": start, "quiet_end": end, "daily_budget": 2})
         manager = AutonomyManager(self.store, self.identity.user_id, self.identity.companion_id)
         due = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()

@@ -388,6 +388,18 @@ def load_policy(store: SQLiteStore, companion_id: str) -> PermissionPolicy:
         "voice": PermissionRule("voice", ActionLevel.REVERSIBLE, True),
         "presence": PermissionRule("presence", ActionLevel.REVERSIBLE, True),
         "email": PermissionRule("email", ActionLevel.NO_ACTION, False),
+        "screen": PermissionRule("screen", ActionLevel.NO_ACTION, False),
+        "camera": PermissionRule("camera", ActionLevel.NO_ACTION, False),
+        "location": PermissionRule("location", ActionLevel.NO_ACTION, False),
+        "device_sync": PermissionRule("device_sync", ActionLevel.REVERSIBLE, True),
+        "delegation": PermissionRule("delegation", ActionLevel.REVERSIBLE, True),
+        "avatar": PermissionRule("avatar", ActionLevel.REVERSIBLE, True),
+        "shared_activities": PermissionRule("shared_activities", ActionLevel.REVERSIBLE, True),
+        "physical_devices": PermissionRule("physical_devices", ActionLevel.NO_ACTION, False),
+        "wearable": PermissionRule("wearable", ActionLevel.NO_ACTION, False),
+        "smart_home": PermissionRule("smart_home", ActionLevel.NO_ACTION, False),
+        "robotics": PermissionRule("robotics", ActionLevel.NO_ACTION, False),
+        "haptics": PermissionRule("haptics", ActionLevel.NO_ACTION, False),
         "payments": PermissionRule("payments", ActionLevel.PROHIBITED, False),
     }
     with store._connect() as con:

@@ -227,6 +227,210 @@ CREATE TABLE IF NOT EXISTS mcp_servers (
     updated_at TEXT NOT NULL
 );
 
+
+CREATE TABLE IF NOT EXISTS vision_sessions (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    started_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    allow_raw_capture INTEGER NOT NULL DEFAULT 0,
+    purpose TEXT NOT NULL DEFAULT '',
+    active INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS vision_context (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL REFERENCES vision_sessions(id) ON DELETE CASCADE,
+    source TEXT NOT NULL,
+    window_title TEXT NOT NULL DEFAULT '',
+    app_name TEXT NOT NULL DEFAULT '',
+    url TEXT NOT NULL DEFAULT '',
+    observation TEXT NOT NULL DEFAULT '',
+    content_hash TEXT,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS agent_plans (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    goal TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending_approval',
+    approval_required INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS agent_jobs (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    plan_id TEXT NOT NULL REFERENCES agent_plans(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    step TEXT NOT NULL,
+    step_index INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'queued',
+    scheduled_at TEXT,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    max_attempts INTEGER NOT NULL DEFAULT 3,
+    last_error TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS agent_checkpoints (
+    id TEXT PRIMARY KEY,
+    job_id TEXT NOT NULL REFERENCES agent_jobs(id) ON DELETE CASCADE,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    step_index INTEGER NOT NULL,
+    state_json TEXT NOT NULL DEFAULT '{}',
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS agent_delegations (
+    id TEXT PRIMARY KEY,
+    job_id TEXT NOT NULL REFERENCES agent_jobs(id) ON DELETE CASCADE,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    specialist TEXT NOT NULL,
+    scope TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'proposed',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS devices (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    platform TEXT NOT NULL,
+    capabilities_json TEXT NOT NULL DEFAULT '[]',
+    status TEXT NOT NULL DEFAULT 'online',
+    last_seen TEXT NOT NULL,
+    sync_cursor INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sync_events (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    device_id TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+    sequence INTEGER NOT NULL,
+    event_type TEXT NOT NULL,
+    payload_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL,
+    UNIQUE(companion_id, sequence)
+);
+
+CREATE TABLE IF NOT EXISTS handoff_tokens (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    source_device TEXT NOT NULL,
+    target_device TEXT,
+    expires_at TEXT NOT NULL,
+    payload_json TEXT NOT NULL DEFAULT '{}',
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS offline_queue (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    device_id TEXT NOT NULL,
+    operation TEXT NOT NULL,
+    payload_json TEXT NOT NULL DEFAULT '{}',
+    status TEXT NOT NULL DEFAULT 'queued',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS embodiment_profiles (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    profile_name TEXT NOT NULL,
+    asset_kind TEXT NOT NULL,
+    asset_ref TEXT NOT NULL DEFAULT '',
+    expression_set TEXT NOT NULL DEFAULT '',
+    animation_style TEXT NOT NULL DEFAULT 'subtle',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS room_states (
+    companion_id TEXT PRIMARY KEY REFERENCES companions(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    theme TEXT NOT NULL DEFAULT 'midnight',
+    scene_json TEXT NOT NULL DEFAULT '{}',
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS room_objects (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    name TEXT NOT NULL,
+    state_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS shared_activities (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    activity_type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    state_json TEXT NOT NULL DEFAULT '{}',
+    started_at TEXT,
+    ended_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS activity_events (
+    id TEXT PRIMARY KEY,
+    activity_id TEXT NOT NULL REFERENCES shared_activities(id) ON DELETE CASCADE,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    actor TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    payload_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS physical_devices (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    capabilities_json TEXT NOT NULL DEFAULT '[]',
+    transport TEXT NOT NULL DEFAULT 'simulator',
+    enabled INTEGER NOT NULL DEFAULT 0,
+    location TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS physical_commands (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    device_id TEXT NOT NULL REFERENCES physical_devices(id) ON DELETE CASCADE,
+    command TEXT NOT NULL,
+    payload_json TEXT NOT NULL DEFAULT '{}',
+    requested_level INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending_approval',
+    created_at TEXT NOT NULL,
+    resolved_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS wearable_context (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    source TEXT NOT NULL,
+    data_json TEXT NOT NULL DEFAULT '{}',
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_created
     ON messages(conversation_id, created_at);
 

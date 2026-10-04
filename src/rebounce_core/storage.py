@@ -72,6 +72,48 @@ CREATE TABLE IF NOT EXISTS permissions (
     PRIMARY KEY (companion_id, resource)
 );
 
+CREATE TABLE IF NOT EXISTS relationship_state (
+    companion_id TEXT PRIMARY KEY REFERENCES companions(id) ON DELETE CASCADE,
+    interactions INTEGER NOT NULL DEFAULT 0,
+    first_interaction_at TEXT,
+    last_interaction_at TEXT,
+    active_days INTEGER NOT NULL DEFAULT 0,
+    directness REAL NOT NULL DEFAULT 0.5,
+    verbosity REAL NOT NULL DEFAULT 0.5,
+    warmth REAL NOT NULL DEFAULT 0.6,
+    humor REAL NOT NULL DEFAULT 0.5,
+    topics_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS milestones (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS goals (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS commitments (
+    id TEXT PRIMARY KEY,
+    companion_id TEXT NOT NULL REFERENCES companions(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    due_at TEXT,
+    status TEXT NOT NULL DEFAULT 'open',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_created
     ON messages(conversation_id, created_at);
 
@@ -84,7 +126,7 @@ CREATE INDEX IF NOT EXISTS idx_events_companion_created
 
 
 class SQLiteStore:
-    """Stage 1 durable storage."""
+    """Stage 2–4 durable SQLite store."""
 
     def __init__(self, path: str | Path) -> None:
         self.path = str(path)
@@ -127,14 +169,47 @@ class SQLiteStore:
                 ),
             )
 
+    def update_companion(
+        self,
+        companion_id: str | UUID,
+        name: str,
+        personality: str,
+        relationship_style: str | None = None,
+    ) -> None:
+        with self._connect() as con:
+            if relationship_style is None:
+                con.execute(
+                    "UPDATE companions SET name = ?, personality = ? WHERE id = ?",
+                    (name, personality, str(companion_id)),
+                )
+            else:
+                con.execute(
+                    """
+                    UPDATE companions
+                    SET name = ?, personality = ?, relationship_style = ?
+                    WHERE id = ?
+                    """,
+                    (name, personality, relationship_style, str(companion_id)),
+                )
+
+    def list_companions(self, user_id: str) -> list[CompanionIdentity]:
+        with self._connect() as con:
+            rows = con.execute(
+                "SELECT * FROM companions WHERE user_id = ? ORDER BY created_at",
+                (user_id,),
+            ).fetchall()
+        return [self._identity(row) for row in rows]
+
     def get_companion(self, companion_id: str | UUID) -> CompanionIdentity | None:
         with self._connect() as con:
             row = con.execute(
                 "SELECT * FROM companions WHERE id = ?",
                 (str(companion_id),),
             ).fetchone()
-        if row is None:
-            return None
+        return self._identity(row) if row else None
+
+    @staticmethod
+    def _identity(row: sqlite3.Row) -> CompanionIdentity:
         return CompanionIdentity(
             user_id=str(row["user_id"]),
             name=str(row["name"]),
@@ -145,10 +220,7 @@ class SQLiteStore:
         )
 
     def add_conversation(
-        self,
-        conversation_id: str,
-        companion_id: str,
-        created_at: str,
+        self, conversation_id: str, companion_id: str, created_at: str
     ) -> None:
         with self._connect() as con:
             con.execute(
@@ -167,15 +239,18 @@ class SQLiteStore:
             ).fetchone()
         return dict(row) if row else None
 
-    def list_messages(self, conversation_id: str) -> list[dict[str, Any]]:
+    def list_conversations(
+        self, companion_id: str | UUID, limit: int = 50
+    ) -> list[dict[str, Any]]:
         with self._connect() as con:
             rows = con.execute(
                 """
-                SELECT * FROM messages
-                WHERE conversation_id = ?
-                ORDER BY created_at ASC, rowid ASC
+                SELECT * FROM conversations
+                WHERE companion_id = ?
+                ORDER BY updated_at DESC
+                LIMIT ?
                 """,
-                (conversation_id,),
+                (str(companion_id), limit),
             ).fetchall()
         return [dict(row) for row in rows]
 
@@ -200,6 +275,18 @@ class SQLiteStore:
                 (created_at, conversation_id),
             )
 
+    def list_messages(self, conversation_id: str) -> list[dict[str, Any]]:
+        with self._connect() as con:
+            rows = con.execute(
+                """
+                SELECT * FROM messages
+                WHERE conversation_id = ?
+                ORDER BY created_at ASC, rowid ASC
+                """,
+                (conversation_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def save_event(self, event: Any) -> None:
         with self._connect() as con:
             con.execute(
@@ -215,6 +302,21 @@ class SQLiteStore:
                     event.created_at.isoformat(),
                 ),
             )
+
+    def list_events(
+        self, companion_id: str | UUID, limit: int = 100
+    ) -> list[dict[str, Any]]:
+        with self._connect() as con:
+            rows = con.execute(
+                """
+                SELECT * FROM events
+                WHERE companion_id = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (str(companion_id), limit),
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     def save_memory(self, memory: dict[str, Any]) -> None:
         with self._connect() as con:
@@ -246,7 +348,37 @@ class SQLiteStore:
                 ),
             )
 
-    def list_memories(self, companion_id: str) -> list[dict[str, Any]]:
+    def get_memory(self, memory_id: str) -> dict[str, Any] | None:
+        with self._connect() as con:
+            row = con.execute(
+                "SELECT * FROM memories WHERE id = ?",
+                (memory_id,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def search_memories(
+        self,
+        companion_id: str | UUID,
+        query: str | None = None,
+        memory_type: str | None = None,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        sql = "SELECT * FROM memories WHERE companion_id = ? AND status = 'active'"
+        args: list[Any] = [str(companion_id)]
+        if memory_type:
+            sql += " AND memory_type = ?"
+            args.append(memory_type)
+        if query:
+            sql += " AND (content LIKE ? OR metadata_json LIKE ?)"
+            q = f"%{query}%"
+            args.extend([q, q])
+        sql += " ORDER BY importance DESC, created_at DESC LIMIT ?"
+        args.append(limit)
+        with self._connect() as con:
+            rows = con.execute(sql, args).fetchall()
+        return [dict(row) for row in rows]
+
+    def list_all_memories(self, companion_id: str | UUID) -> list[dict[str, Any]]:
         with self._connect() as con:
             rows = con.execute(
                 """
@@ -254,6 +386,232 @@ class SQLiteStore:
                 WHERE companion_id = ? AND status = 'active'
                 ORDER BY importance DESC, created_at DESC
                 """,
-                (companion_id,),
+                (str(companion_id),),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def update_memory(
+        self,
+        memory_id: str,
+        content: str,
+        metadata: dict[str, Any],
+        confidence: float,
+        importance: float,
+    ) -> None:
+        with self._connect() as con:
+            con.execute(
+                """
+                UPDATE memories
+                SET content = ?, metadata_json = ?, confidence = ?,
+                    importance = ?, last_confirmed_at = ?, status = 'active'
+                WHERE id = ?
+                """,
+                (
+                    content,
+                    json.dumps(metadata, ensure_ascii=False),
+                    confidence,
+                    importance,
+                    datetime.now().astimezone().isoformat(),
+                    memory_id,
+                ),
+            )
+
+    def supersede_memory(self, memory_id: str) -> None:
+        with self._connect() as con:
+            con.execute(
+                "UPDATE memories SET status = 'superseded' WHERE id = ?",
+                (memory_id,),
+            )
+
+    def delete_memory(self, memory_id: str) -> None:
+        with self._connect() as con:
+            con.execute("DELETE FROM memories WHERE id = ?", (memory_id,))
+
+    def get_relationship(self, companion_id: str | UUID) -> dict[str, Any]:
+        with self._connect() as con:
+            row = con.execute(
+                "SELECT * FROM relationship_state WHERE companion_id = ?",
+                (str(companion_id),),
+            ).fetchone()
+        if row:
+            data = dict(row)
+            data["topics"] = json.loads(data.pop("topics_json") or "{}")
+            return data
+        return {
+            "companion_id": str(companion_id),
+            "interactions": 0,
+            "first_interaction_at": None,
+            "last_interaction_at": None,
+            "active_days": 0,
+            "directness": 0.5,
+            "verbosity": 0.5,
+            "warmth": 0.6,
+            "humor": 0.5,
+            "topics": {},
+        }
+
+    def upsert_relationship(self, profile: dict[str, Any]) -> None:
+        now = profile.get("updated_at") or datetime.now().astimezone().isoformat()
+        with self._connect() as con:
+            con.execute(
+                """
+                INSERT INTO relationship_state(
+                    companion_id, interactions, first_interaction_at,
+                    last_interaction_at, active_days, directness, verbosity,
+                    warmth, humor, topics_json, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(companion_id) DO UPDATE SET
+                    interactions = excluded.interactions,
+                    first_interaction_at = excluded.first_interaction_at,
+                    last_interaction_at = excluded.last_interaction_at,
+                    active_days = excluded.active_days,
+                    directness = excluded.directness,
+                    verbosity = excluded.verbosity,
+                    warmth = excluded.warmth,
+                    humor = excluded.humor,
+                    topics_json = excluded.topics_json,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    profile["companion_id"],
+                    profile["interactions"],
+                    profile.get("first_interaction_at"),
+                    profile.get("last_interaction_at"),
+                    profile.get("active_days", 0),
+                    profile.get("directness", 0.5),
+                    profile.get("verbosity", 0.5),
+                    profile.get("warmth", 0.6),
+                    profile.get("humor", 0.5),
+                    json.dumps(profile.get("topics", {}), ensure_ascii=False),
+                    profile.get("created_at", now),
+                    now,
+                ),
+            )
+
+    def add_milestone(self, milestone: dict[str, Any]) -> None:
+        with self._connect() as con:
+            con.execute(
+                """
+                INSERT INTO milestones(id, companion_id, title, description, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    milestone["id"],
+                    milestone["companion_id"],
+                    milestone["title"],
+                    milestone.get("description", ""),
+                    milestone["created_at"],
+                ),
+            )
+
+    def list_milestones(self, companion_id: str | UUID, limit: int = 20) -> list[dict[str, Any]]:
+        with self._connect() as con:
+            rows = con.execute(
+                """
+                SELECT * FROM milestones
+                WHERE companion_id = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (str(companion_id), limit),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def add_goal(self, goal: dict[str, Any]) -> None:
+        with self._connect() as con:
+            con.execute(
+                """
+                INSERT INTO goals(id, companion_id, title, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    goal["id"],
+                    goal["companion_id"],
+                    goal["title"],
+                    goal.get("status", "active"),
+                    goal["created_at"],
+                    goal["updated_at"],
+                ),
+            )
+
+    def list_goals(self, companion_id: str | UUID) -> list[dict[str, Any]]:
+        with self._connect() as con:
+            rows = con.execute(
+                """
+                SELECT * FROM goals
+                WHERE companion_id = ?
+                ORDER BY updated_at DESC
+                """,
+                (str(companion_id),),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def update_goal(self, goal_id: str, status: str) -> None:
+        with self._connect() as con:
+            con.execute(
+                "UPDATE goals SET status = ?, updated_at = ? WHERE id = ?",
+                (status, datetime.now().astimezone().isoformat(), goal_id),
+            )
+
+    def add_commitment(self, commitment: dict[str, Any]) -> None:
+        with self._connect() as con:
+            con.execute(
+                """
+                INSERT INTO commitments(
+                    id, companion_id, title, due_at, status, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    commitment["id"],
+                    commitment["companion_id"],
+                    commitment["title"],
+                    commitment.get("due_at"),
+                    commitment.get("status", "open"),
+                    commitment["created_at"],
+                    commitment["updated_at"],
+                ),
+            )
+
+    def list_commitments(self, companion_id: str | UUID) -> list[dict[str, Any]]:
+        with self._connect() as con:
+            rows = con.execute(
+                """
+                SELECT * FROM commitments
+                WHERE companion_id = ?
+                ORDER BY updated_at DESC
+                """,
+                (str(companion_id),),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def export_data(self, companion_id: str | UUID) -> dict[str, Any]:
+        identity = self.get_companion(companion_id)
+        if identity is None:
+            raise ValueError("companion not found")
+        conversations = self.list_conversations(companion_id, 500)
+        return {
+            "version": 1,
+            "exported_at": datetime.now().astimezone().isoformat(),
+            "companion": {
+                "user_id": identity.user_id,
+                "name": identity.name,
+                "companion_id": str(identity.companion_id),
+                "relationship_style": identity.relationship_style,
+                "personality": identity.personality,
+                "created_at": identity.created_at.isoformat(),
+            },
+            "conversations": conversations,
+            "messages": [
+                message
+                for conversation in conversations
+                for message in self.list_messages(conversation["id"])
+            ],
+            "memories": self.list_all_memories(companion_id),
+            "relationship": self.get_relationship(companion_id),
+            "milestones": self.list_milestones(companion_id, 500),
+            "goals": self.list_goals(companion_id),
+            "commitments": self.list_commitments(companion_id),
+            "events": self.list_events(companion_id, 500),
+        }

@@ -249,5 +249,5 @@
   const observer = new MutationObserver(() => injectNav());
   observer.observe(document.body, {subtree:true, childList:true});
   setTimeout(injectNav, 0);
-  setInterval(() => { if (active && document.querySelector("#view")) renderActive(); }, 500);
+  document.addEventListener("click", event => { if (event.target.closest("button[data-view]")) active = null; });
 })();

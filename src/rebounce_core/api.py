@@ -134,6 +134,7 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
                         "voice": self._voice_json(cid),
                         "presence": self._presence_json(cid),
                         "attention": self._attention_json(cid),
+                        "reminders": AutonomyManager(self.app.store, identity.user_id, identity.companion_id).list_reminders(),
                         "proactive": AutonomyManager(self.app.store, identity.user_id, identity.companion_id).list_proactive(),
                         "curiosity": CuriosityEngine(self.app.store, identity.user_id, identity.companion_id).list_items(),
                         "curiosity_budget": CuriosityEngine(self.app.store, identity.user_id, identity.companion_id).budget(),

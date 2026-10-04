@@ -620,8 +620,11 @@ def list_approvals(store: SQLiteStore, cid: str) -> list[dict[str,Any]]:
     return _rows(store,"SELECT * FROM tool_approvals WHERE companion_id=? AND status='pending' ORDER BY created_at DESC",(str(cid),))
 
 
-def resolve_approval(store: SQLiteStore, approval_id: str, approved: bool) -> dict[str,Any]:
-    row=_row(store,"SELECT * FROM tool_approvals WHERE id=?",(approval_id,))
+def resolve_approval(store: SQLiteStore, approval_id: str, approved: bool, companion_id: str | None = None) -> dict[str,Any]:
+    if companion_id:
+        row=_row(store,"SELECT * FROM tool_approvals WHERE id=? AND companion_id=?",(approval_id, str(companion_id)))
+    else:
+        row=_row(store,"SELECT * FROM tool_approvals WHERE id=?",(approval_id,))
     if not row: raise ValueError("approval not found")
     status="approved" if approved else "rejected"
     with store._connect() as con:

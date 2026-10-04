@@ -1,0 +1,32 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from enum import StrEnum
+from typing import Any
+from uuid import UUID, uuid4
+
+
+class EventType(StrEnum):
+    USER_MESSAGE = "USER_MESSAGE"
+    ASSISTANT_MESSAGE = "ASSISTANT_MESSAGE"
+    MEMORY_CREATED = "MEMORY_CREATED"
+    MEMORY_UPDATED = "MEMORY_UPDATED"
+    GOAL_CHANGED = "GOAL_CHANGED"
+    COMMITMENT_CREATED = "COMMITMENT_CREATED"
+    TOOL_APPROVAL_REQUIRED = "TOOL_APPROVAL_REQUIRED"
+    TOOL_EXECUTION = "TOOL_EXECUTION"
+    USER_AWAY = "USER_AWAY"
+    USER_RETURNED = "USER_RETURNED"
+    MODEL_UNAVAILABLE = "MODEL_UNAVAILABLE"
+    SYSTEM = "SYSTEM"
+
+
+@dataclass(slots=True)
+class Event:
+    type: EventType
+    user_id: str
+    companion_id: UUID
+    data: dict[str, Any] = field(default_factory=dict)
+    event_id: UUID = field(default_factory=uuid4)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

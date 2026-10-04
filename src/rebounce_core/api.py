@@ -18,6 +18,22 @@ from .provider import ModelProvider, OpenAICompatibleProvider, StubModelProvider
 from .relationship import RelationshipEngine
 from .runtime import CompanionRuntime
 from .storage import SQLiteStore
+from .capabilities import (
+    AutonomyManager,
+    CuriosityEngine,
+    ToolGateway,
+    TOOL_SPECS,
+    compact_journal,
+    get_attention,
+    get_presence,
+    get_voice_config,
+    list_approvals,
+    resolve_approval,
+    set_attention,
+    set_permission,
+    set_presence,
+    set_voice_config,
+)
 
 WEB_ROOT = Path(__file__).resolve().parents[2] / "web"
 MAX_BODY = 1024 * 1024
@@ -87,7 +103,7 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
         parsed, parts = self._parts()
         try:
             if parsed.path == "/health":
-                return self._send(200, {"status": "ok", "service": "rebounce", "stage": 4})
+                return self._send(200, {"status": "ok", "service": "rebounce", "stage": 9})
             if parsed.path in {"/", "/index.html"}:
                 return self._static("index.html")
             if len(parts) == 2 and parts[0] == "assets":
@@ -113,6 +129,18 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
                         "commitments": self.app.store.list_commitments(cid),
                         "events": self.app.store.list_events(cid, 100),
                         "provider": self._provider_public(),
+                        "voice": self._voice_json(cid),
+                        "presence": self._presence_json(cid),
+                        "attention": self._attention_json(cid),
+                        "proactive": AutonomyManager(self.app.store, identity.user_id, identity.companion_id).list_proactive(),
+                        "curiosity": CuriosityEngine(self.app.store, identity.user_id, identity.companion_id).list_items(),
+                        "curiosity_budget": CuriosityEngine(self.app.store, identity.user_id, identity.companion_id).budget(),
+                        "notes": _table_rows_direct(self.app.store, "notes", cid, "updated_at DESC"),
+                        "tasks": _table_rows_direct(self.app.store, "tasks", cid, "updated_at DESC"),
+                        "calendar": _table_rows_direct(self.app.store, "calendar_events", cid, "start_at ASC"),
+                        "projects": _table_rows_direct(self.app.store, "projects", cid, "updated_at DESC"),
+                        "approvals": list_approvals(self.app.store, cid),
+                        "permissions": self._permissions_json(cid),
                     })
                 if len(parts) == 5 and parts[3] == "conversations":
                     conversation = self.app.store.get_conversation(parts[4])
@@ -134,6 +162,30 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
                     return self._send(200, self.app.store.export_data(cid))
                 if len(parts) == 4 and parts[3] == "conversations":
                     return self._send(200, {"conversations": self.app.store.list_conversations(cid)})
+
+            if len(parts) == 4 and parts[:2] == ["v1", "companions"]:
+                identity = self._identity(parts[2])
+                cid = str(identity.companion_id)
+                if parts[3] == "voice":
+                    return self._send(200, self._voice_json(cid))
+                if parts[3] == "presence":
+                    return self._send(200, self._presence_json(cid))
+                if parts[3] == "autonomy":
+                    manager = AutonomyManager(self.app.store, identity.user_id, identity.companion_id)
+                    return self._send(200, {"attention": self._attention_json(cid), "reminders": manager.list_reminders(), "proactive": manager.list_proactive(), "journal": compact_journal(self.app.store, cid)})
+                if parts[3] == "curiosity":
+                    engine = CuriosityEngine(self.app.store, identity.user_id, identity.companion_id)
+                    return self._send(200, {"budget": engine.budget(), "items": engine.list_items(), "suggested_query": engine.suggest_query()})
+                if parts[3] == "tools":
+                    return self._send(200, {"tools": TOOL_SPECS_JSON(), "approvals": list_approvals(self.app.store, cid)})
+                if parts[3] == "approvals":
+                    return self._send(200, {"approvals": list_approvals(self.app.store, cid)})
+                if parts[3] in {"notes", "tasks", "calendar", "projects"}:
+                    table = {"notes":"notes","tasks":"tasks","calendar":"calendar_events","projects":"projects"}[parts[3]]
+                    order = "start_at ASC" if table == "calendar_events" else "updated_at DESC"
+                    return self._send(200, {parts[3]: _table_rows_direct(self.app.store, table, cid, order)})
+                if parts[3] == "mcp":
+                    return self._send(200, {"servers": _table_rows_direct(self.app.store, "mcp_servers", cid, "updated_at DESC")})
 
             if parsed.path == "/v1/config/provider":
                 return self._send(200, self._provider_public())
@@ -200,6 +252,61 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
                 else:
                     item = engine.add_commitment(identity, str(data["title"]), data.get("due_at"))
                 return self._send(201, item)
+
+            if len(parts) == 4 and parts[:2] == ["v1", "companions"] and parts[3] == "reminders":
+                identity = self._identity(parts[2])
+                manager = AutonomyManager(self.app.store, identity.user_id, identity.companion_id)
+                return self._send(201, manager.add_reminder(str(data["title"]), str(data["due_at"]), str(data.get("category", "reminder")), data.get("recurrence")))
+
+            if len(parts) == 5 and parts[:2] == ["v1", "companions"] and parts[3] == "autonomy" and parts[4] == "run":
+                identity = self._identity(parts[2])
+                manager = AutonomyManager(self.app.store, identity.user_id, identity.companion_id)
+                return self._send(200, {"items": manager.run_due(), "decision": __import__("rebounce_core.capabilities", fromlist=["attention_decision"]).attention_decision(self.app.store, str(identity.companion_id))})
+
+            if len(parts) == 4 and parts[:2] == ["v1", "companions"] and parts[3] == "autonomy":
+                identity = self._identity(parts[2])
+                return self._send(200, self._attention_json(str(identity.companion_id), set_attention(self.app.store, str(identity.companion_id), data)))
+
+            if len(parts) == 4 and parts[:2] == ["v1", "companions"] and parts[3] == "curiosity":
+                identity = self._identity(parts[2])
+                engine = CuriosityEngine(self.app.store, identity.user_id, identity.companion_id)
+                if "enabled" in data:
+                    return self._send(200, {"budget": engine.configure(bool(data["enabled"]), int(data.get("daily_limit", 3))), "items": engine.list_items()})
+                return self._send(200, {"items": engine.research(str(data.get("query", engine.suggest_query() or ""))), "budget": engine.budget()})
+
+            if len(parts) == 4 and parts[:2] == ["v1", "companions"] and parts[3] == "tools":
+                identity = self._identity(parts[2])
+                gateway = ToolGateway(self.app.store, identity.user_id, identity.companion_id)
+                return self._send(200, gateway.execute(str(data["tool"]), dict(data.get("args", {})), approved=bool(data.get("approved", False))))
+
+            if len(parts) == 5 and parts[:2] == ["v1", "companions"] and parts[3] == "approvals":
+                identity = self._identity(parts[2])
+                approval = resolve_approval(self.app.store, parts[4], bool(data.get("approved", False)))
+                if data.get("approved", False):
+                    gateway = ToolGateway(self.app.store, identity.user_id, identity.companion_id)
+                    approval["execution"] = gateway.execute(approval["tool_name"], json.loads(approval["args_json"]), approved=True)
+                return self._send(200, approval)
+
+            if len(parts) == 4 and parts[:2] == ["v1", "companions"] and parts[3] == "voice":
+                identity = self._identity(parts[2])
+                return self._send(200, self._voice_json(str(identity.companion_id), set_voice_config(self.app.store, str(identity.companion_id), data)))
+
+            if len(parts) == 4 and parts[:2] == ["v1", "companions"] and parts[3] == "presence":
+                identity = self._identity(parts[2])
+                return self._send(200, self._presence_json(str(identity.companion_id), set_presence(self.app.store, str(identity.companion_id), data)))
+
+            if len(parts) == 4 and parts[:2] == ["v1", "companions"] and parts[3] == "mcp":
+                identity = self._identity(parts[2])
+                name = str(data.get("name", "")).strip()
+                command = str(data.get("command", "")).strip()
+                args = data.get("args", [])
+                if not name or not command or not isinstance(args, list):
+                    raise ValueError("name, command and args[] are required")
+                server_id = str(uuid4())
+                created = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
+                with self.app.store._connect() as con:
+                    con.execute("INSERT INTO mcp_servers(id, companion_id, name, command, args_json, enabled, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)", (server_id, str(identity.companion_id), name, command, json.dumps(args), created, created))
+                return self._send(201, {"id": server_id, "name": name, "command": command, "args": args, "enabled": False})
 
             if parsed.path == "/v1/config/provider":
                 global _PROVIDER
@@ -285,6 +392,28 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
                     raise ValueError("invalid goal status")
                 self.app.store.update_goal(parts[4], status)
                 return self._send(200, {"ok": True})
+            if len(parts) == 5 and parts[:2] == ["v1", "companions"] and parts[3] == "permissions":
+                identity = self._identity(parts[2])
+                return self._send(200, set_permission(self.app.store, str(identity.companion_id), parts[4], bool(data.get("allowed", False)), int(data.get("max_level", 0))))
+
+            if len(parts) == 5 and parts[:2] == ["v1", "companions"] and parts[3] == "reminders":
+                self._identity(parts[2])
+                status = str(data.get("status", "scheduled"))
+                if status not in {"scheduled", "completed", "cancelled"}:
+                    raise ValueError("invalid reminder status")
+                with self.app.store._connect() as con:
+                    con.execute("UPDATE reminders SET status = ?, updated_at = ? WHERE id = ? AND companion_id = ?", (status, __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(), parts[4], parts[2]))
+                return self._send(200, {"ok": True})
+
+            if len(parts) == 5 and parts[:2] == ["v1", "companions"] and parts[3] == "proactive":
+                self._identity(parts[2])
+                status = str(data.get("status", "dismissed"))
+                if status not in {"pending", "deferred", "read", "dismissed"}:
+                    raise ValueError("invalid proactive status")
+                with self.app.store._connect() as con:
+                    con.execute("UPDATE proactive_queue SET status = ? WHERE id = ? AND companion_id = ?", (status, parts[4], parts[2]))
+                return self._send(200, {"ok": True})
+
             if len(parts) == 4 and parts[:2] == ["v1", "companions"] and parts[3] == "settings":
                 identity = self._identity(parts[2])
                 name, personality = str(data.get("name", identity.name)).strip(), str(data.get("personality", identity.personality))
@@ -317,6 +446,24 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
             "created_at": identity.created_at.isoformat(),
         }
 
+    def _voice_json(self, cid, config=None):
+        cfg = config or get_voice_config(self.app.store, cid)
+        return {"enabled": cfg.enabled, "provider": cfg.provider, "language": cfg.language, "voice_name": cfg.voice_name, "rate": cfg.rate, "pitch": cfg.pitch}
+
+    def _presence_json(self, cid, state=None):
+        value = state or get_presence(self.app.store, cid)
+        return {"mode": value.mode, "state": value.state, "visible": value.visible, "always_on_top": value.always_on_top}
+
+    def _attention_json(self, cid, state=None):
+        value = state or get_attention(self.app.store, cid)
+        return {"activity": value.activity, "quiet_start": value.quiet_start, "quiet_end": value.quiet_end, "proactive_enabled": value.proactive_enabled, "daily_budget": value.daily_budget}
+
+    def _permissions_json(self, cid):
+        from .capabilities import load_policy
+        resources = {"conversation","memory","local_files","browser","github","mcp","notes","tasks","calendar","projects","voice","presence","email","payments"}
+        policy = load_policy(self.app.store, str(cid))
+        return [policy.describe(resource) for resource in sorted(resources)]
+
     def _provider_public(self):
         return {"provider": _PROVIDER["provider"], "base_url": _PROVIDER["base_url"], "model": _PROVIDER["model"], "configured": self.app.provider.name != "stub"}
 
@@ -333,6 +480,17 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, *_args):
         pass
 
+
+def _table_rows_direct(store: SQLiteStore, table: str, cid: str, order: str) -> list[dict]:
+    allowed = {"notes","tasks","calendar_events","projects","mcp_servers"}
+    if table not in allowed:
+        raise ValueError("invalid table")
+    with store._connect() as con:
+        rows = con.execute(f"SELECT * FROM {table} WHERE companion_id = ? ORDER BY {order} LIMIT 200", (str(cid),)).fetchall()
+    return [dict(row) for row in rows]
+
+def TOOL_SPECS_JSON():
+    return [{"name": s.name, "resource": s.resource, "level": int(s.level), "description": s.description, "reversible": s.reversible} for s in TOOL_SPECS]
 
 def create_local_api(store: SQLiteStore, provider: ModelProvider, *, host="127.0.0.1", port=4100):
     return ReBounceHTTPServer((host, port), store, provider)

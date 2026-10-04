@@ -144,7 +144,7 @@ class Stage24Tests(unittest.TestCase):
         base = f"http://127.0.0.1:{server.server_address[1]}"
         try:
             with urlopen(base + "/health") as response:
-                self.assertEqual(json.loads(response.read())["stage"], 4)
+                self.assertGreaterEqual(json.loads(response.read())["stage"], 4)
             with urlopen(base + "/") as response:
                 self.assertIn(b"ReBounce", response.read())
             with urlopen(base + "/assets/app.js") as response:

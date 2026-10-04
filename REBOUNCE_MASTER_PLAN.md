@@ -706,6 +706,41 @@ Sensitive actions should require explicit approval:
 - external publishing
 - sensitive account actions
 
+10A. NOTIFICATION CHANNELS — PUSHOVER
+
+Pushover is a planned optional notification channel for ReBounce.
+
+Potential uses:
+- proactive companion messages
+- approved reminders
+- background-task completion
+- research/curiosity discoveries
+- important project updates
+- system/error alerts
+- approval requests when the user is away from the main ReBounce UI
+
+Pushover must remain a delivery channel, not part of the companion's core identity or memory architecture.
+
+Notification architecture:
+Companion decision
+→ attention manager
+→ notification policy
+→ channel router
+→ Pushover / desktop / mobile / other channel
+
+Controls:
+- enable/disable Pushover
+- quiet hours
+- priority
+- per-category permissions
+- notification budget/rate limit
+- emergency/critical channel rules
+- test notification
+- revoke credentials
+
+Privacy:
+Do not send sensitive content to Pushover unless the user explicitly allows it. Prefer short notifications that instruct the user to open ReBounce for details.
+
 13. ATTENTION SYSTEM
 
 Treat user attention as limited.

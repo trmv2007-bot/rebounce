@@ -1857,7 +1857,7 @@ Companion brain
 
 Do not reverse this order simply because avatar work is visually exciting.
 
-70. STAGE 0 — FOUNDATION [IMPLEMENTED — VERIFICATION PENDING]
+70. STAGE 0 — FOUNDATION [VERIFIED — 2026-10-04]
 
 Goal:
 Define the real system before building lots of UI.
@@ -1877,7 +1877,9 @@ Deliverables:
 Exit:
 We can explain the full lifecycle of one message.
 
-71. STAGE 1 — MINIMAL COMPANION BRAIN
+CI verification: GitHub Actions Stage 0 run #4 (commit 8cbeadde8486d0dffdc97f3d0f1facd118cde3cc) passed all six required Windows/Linux/macOS × Python 3.13/3.14 jobs.
+
+71. STAGE 1 — MINIMAL COMPANION BRAIN [IMPLEMENTED — VERIFICATION PENDING]
 
 Build:
 - identity
@@ -1892,6 +1894,16 @@ No complex avatar yet.
 
 Success:
 Restarting ReBounce does not change who it is.
+
+Implementation currently includes:
+- persistent identity reload from SQLite
+- full persisted conversation context replay
+- OpenAI-compatible local/remote model adapter
+- streaming model chunks and runtime streaming
+- runtime state and model-unavailable events
+- localhost HTTP API for identity and chat
+- runnable `python -m rebounce_core.api` entry point
+- Stage 1 automated coverage on Windows/Linux/macOS and Python 3.13/3.14
 
 72. STAGE 2 — REAL MEMORY ENGINE
 

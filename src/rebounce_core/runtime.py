@@ -1,15 +1,26 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import uuid4
 
 from .events import Event, EventType
 from .identity import CompanionIdentity
-from .models import ModelMessage, ModelRole
+from .models import ModelMessage, ModelResponse, ModelRole, ModelStreamChunk
 from .permissions import PermissionPolicy
 from .provider import ModelProvider
 from .storage import SQLiteStore
+
+
+@dataclass(slots=True)
+class RuntimeState:
+    companion_id: str
+    active_conversation_id: str | None = None
+    phase: str = "idle"
+    last_user_message_at: str | None = None
+    last_assistant_message_at: str | None = None
+    last_model: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,10 +28,12 @@ class RuntimeResult:
     content: str
     event_id: str
     provider: str
+    conversation_id: str
+    model: str
 
 
 class CompanionRuntime:
-    """Minimal Stage 0 companion lifecycle."""
+    """Stage 1 companion runtime with persistent conversation context."""
 
     def __init__(
         self,
@@ -33,19 +46,28 @@ class CompanionRuntime:
         self.store = store
         self.provider = provider
         self.permissions = permissions or PermissionPolicy.safe_default()
+        self.state = RuntimeState(companion_id=str(identity.companion_id))
 
-    async def handle_user_message(
+    def _system_message(self) -> ModelMessage:
+        personality = self.identity.personality.strip()
+        description = (
+            f"You are {self.identity.name}, an AI companion in ReBounce. "
+            "Be honest that you are an AI, preserve continuity from the conversation history, "
+            "and do not claim actions or experiences you did not actually perform."
+        )
+        if personality:
+            description += f" Personality guidance: {personality}"
+        return ModelMessage(ModelRole.SYSTEM, description)
+
+    def _prepare_turn(
         self,
         content: str,
-        *,
-        conversation_id: str | None = None,
-        model: str | None = None,
-    ) -> RuntimeResult:
+        conversation_id: str | None,
+    ) -> tuple[str, list[ModelMessage]]:
         if not content.strip():
             raise ValueError("content must not be empty")
 
         now = datetime.now(timezone.utc).isoformat()
-
         if conversation_id is None:
             conversation_id = str(uuid4())
             self.store.add_conversation(
@@ -53,6 +75,12 @@ class CompanionRuntime:
                 str(self.identity.companion_id),
                 now,
             )
+        else:
+            conversation = self.store.get_conversation(conversation_id)
+            if conversation is None:
+                raise ValueError("conversation_id does not exist")
+            if str(conversation["companion_id"]) != str(self.identity.companion_id):
+                raise ValueError("conversation_id belongs to another companion")
 
         self.store.save_message(
             str(uuid4()),
@@ -61,29 +89,58 @@ class CompanionRuntime:
             content,
             now,
         )
-
-        user_event = Event(
-            type=EventType.USER_MESSAGE,
-            user_id=self.identity.user_id,
-            companion_id=self.identity.companion_id,
-            data={"conversation_id": conversation_id},
-        )
-        self.store.save_event(user_event)
-
-        response = await self.provider.generate(
-            [ModelMessage(ModelRole.USER, content)],
-            model=model,
+        self.store.save_event(
+            Event(
+                type=EventType.USER_MESSAGE,
+                user_id=self.identity.user_id,
+                companion_id=self.identity.companion_id,
+                data={"conversation_id": conversation_id},
+            )
         )
 
+        messages: list[ModelMessage] = [self._system_message()]
+        for row in self.store.list_messages(conversation_id):
+            try:
+                role = ModelRole(str(row["role"]))
+            except ValueError as exc:
+                raise ValueError(f"unsupported persisted message role: {row['role']}") from exc
+            messages.append(ModelMessage(role, str(row["content"])))
+
+        self.state.active_conversation_id = conversation_id
+        self.state.phase = "responding"
+        self.state.last_user_message_at = now
+        return conversation_id, messages
+
+    def _record_provider_failure(self, conversation_id: str, exc: Exception) -> None:
+        self.store.save_event(
+            Event(
+                type=EventType.MODEL_UNAVAILABLE,
+                user_id=self.identity.user_id,
+                companion_id=self.identity.companion_id,
+                data={
+                    "conversation_id": conversation_id,
+                    "provider": self.provider.name,
+                    "error": str(exc)[:500],
+                },
+            )
+        )
+        self.state.phase = "error"
+
+    def _finish_response(
+        self,
+        conversation_id: str,
+        content: str,
+        response: ModelResponse,
+    ) -> RuntimeResult:
+        now = datetime.now(timezone.utc).isoformat()
         self.store.save_message(
             str(uuid4()),
             conversation_id,
             ModelRole.ASSISTANT.value,
-            response.content,
-            datetime.now(timezone.utc).isoformat(),
+            content,
+            now,
         )
-
-        assistant_event = Event(
+        event = Event(
             type=EventType.ASSISTANT_MESSAGE,
             user_id=self.identity.user_id,
             companion_id=self.identity.companion_id,
@@ -91,12 +148,67 @@ class CompanionRuntime:
                 "conversation_id": conversation_id,
                 "provider": response.provider_name,
                 "model": response.model_name,
+                "finish_reason": response.finish_reason,
             },
         )
-        self.store.save_event(assistant_event)
-
+        self.store.save_event(event)
+        self.state.phase = "idle"
+        self.state.last_assistant_message_at = now
+        self.state.last_model = response.model_name
         return RuntimeResult(
-            content=response.content,
-            event_id=str(assistant_event.event_id),
+            content=content,
+            event_id=str(event.event_id),
             provider=response.provider_name,
+            conversation_id=conversation_id,
+            model=response.model_name,
         )
+
+    async def handle_user_message(
+        self,
+        content: str,
+        *,
+        conversation_id: str | None = None,
+        model: str | None = None,
+    ) -> RuntimeResult:
+        conversation_id, messages = self._prepare_turn(content, conversation_id)
+        try:
+            response = await self.provider.generate(messages, model=model)
+        except Exception as exc:
+            self._record_provider_failure(conversation_id, exc)
+            raise
+
+        return self._finish_response(conversation_id, response.content, response)
+
+    async def stream_user_message(
+        self,
+        content: str,
+        *,
+        conversation_id: str | None = None,
+        model: str | None = None,
+    ) -> AsyncIterator[ModelStreamChunk]:
+        conversation_id, messages = self._prepare_turn(content, conversation_id)
+        chunks: list[str] = []
+        response_model = model or ""
+        response_provider = self.provider.name
+        finish_reason = "stop"
+
+        try:
+            async for chunk in self.provider.stream(messages, model=model):
+                response_model = chunk.model_name or response_model
+                response_provider = chunk.provider_name or response_provider
+                if chunk.finish_reason:
+                    finish_reason = chunk.finish_reason
+                if chunk.content:
+                    chunks.append(chunk.content)
+                    yield chunk
+        except Exception as exc:
+            self._record_provider_failure(conversation_id, exc)
+            raise
+
+        response = ModelResponse(
+            content="".join(chunks),
+            model_name=response_model or "unknown",
+            provider_name=response_provider,
+            finish_reason=finish_reason,
+        )
+        self._finish_response(conversation_id, response.content, response)

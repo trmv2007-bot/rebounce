@@ -3,8 +3,12 @@ from __future__ import annotations
 import json
 import sqlite3
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterator
+from uuid import UUID
+
+from .identity import CompanionIdentity
 
 
 SCHEMA = """
@@ -80,11 +84,7 @@ CREATE INDEX IF NOT EXISTS idx_events_companion_created
 
 
 class SQLiteStore:
-    """Stage 0 durable storage.
-
-    SQLite is used first because it is serverless and portable. A larger
-    database can be introduced later behind the same domain contracts.
-    """
+    """Stage 1 durable storage."""
 
     def __init__(self, path: str | Path) -> None:
         self.path = str(path)
@@ -109,7 +109,7 @@ class SQLiteStore:
         with self._connect() as con:
             con.executescript(SCHEMA)
 
-    def save_companion(self, identity: Any) -> None:
+    def save_companion(self, identity: CompanionIdentity) -> None:
         with self._connect() as con:
             con.execute(
                 """
@@ -127,6 +127,23 @@ class SQLiteStore:
                 ),
             )
 
+    def get_companion(self, companion_id: str | UUID) -> CompanionIdentity | None:
+        with self._connect() as con:
+            row = con.execute(
+                "SELECT * FROM companions WHERE id = ?",
+                (str(companion_id),),
+            ).fetchone()
+        if row is None:
+            return None
+        return CompanionIdentity(
+            user_id=str(row["user_id"]),
+            name=str(row["name"]),
+            companion_id=UUID(str(row["id"])),
+            relationship_style=str(row["relationship_style"]),
+            personality=str(row["personality"]),
+            created_at=datetime.fromisoformat(str(row["created_at"])),
+        )
+
     def add_conversation(
         self,
         conversation_id: str,
@@ -141,6 +158,26 @@ class SQLiteStore:
                 """,
                 (conversation_id, companion_id, created_at, created_at),
             )
+
+    def get_conversation(self, conversation_id: str) -> dict[str, Any] | None:
+        with self._connect() as con:
+            row = con.execute(
+                "SELECT * FROM conversations WHERE id = ?",
+                (conversation_id,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def list_messages(self, conversation_id: str) -> list[dict[str, Any]]:
+        with self._connect() as con:
+            rows = con.execute(
+                """
+                SELECT * FROM messages
+                WHERE conversation_id = ?
+                ORDER BY created_at ASC, rowid ASC
+                """,
+                (conversation_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     def save_message(
         self,
@@ -157,6 +194,10 @@ class SQLiteStore:
                 VALUES (?, ?, ?, ?, ?)
                 """,
                 (message_id, conversation_id, role, content, created_at),
+            )
+            con.execute(
+                "UPDATE conversations SET updated_at = ? WHERE id = ?",
+                (created_at, conversation_id),
             )
 
     def save_event(self, event: Any) -> None:

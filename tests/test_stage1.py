@@ -192,6 +192,54 @@ class Stage1Tests(unittest.TestCase):
         self.assertEqual(chunks[-1].finish_reason, "stop")
         self.assertTrue(fake.closed)
 
+    def test_openai_compatible_stream_uses_timeout_keyword_and_keeps_body(self) -> None:
+        """urlopen's second positional parameter is `data`, not `timeout`.
+
+        Passing the timeout positionally silently replaced the JSON request body
+        with a float and left the socket on the global default timeout.
+        """
+        lines = [
+            b'data: {"model":"local-model","choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}]}\n\n',
+            b"data: [DONE]\n\n",
+        ]
+        fake = FakeResponse(lines)
+        provider = OpenAICompatibleProvider(
+            "http://127.0.0.1:8080/v1",
+            default_model="local-model",
+            timeout=7.5,
+        )
+        seen: dict[str, object] = {}
+
+        def fake_urlopen(request, *, timeout):
+            seen["timeout"] = timeout
+            seen["data"] = request.data
+            seen["method"] = request.get_method()
+            return fake
+
+        async def collect():
+            return [
+                chunk
+                async for chunk in provider.stream(
+                    [ModelMessage(ModelRole.USER, "hello")]
+                )
+            ]
+
+        with patch(
+            "rebounce_core.provider.urllib.request.urlopen",
+            side_effect=fake_urlopen,
+        ):
+            chunks = asyncio.run(collect())
+
+        self.assertEqual(seen["timeout"], 7.5)
+        self.assertEqual(seen["method"], "POST")
+        self.assertIsInstance(seen["data"], bytes)
+        payload = json.loads(bytes(seen["data"]).decode("utf-8"))
+        self.assertIs(payload["stream"], True)
+        self.assertEqual(payload["model"], "local-model")
+        self.assertEqual(payload["messages"], [{"role": "user", "content": "hello"}])
+        self.assertEqual(chunks[0].content, "ok")
+        self.assertTrue(fake.closed)
+
     def test_local_api_create_identity_and_chat(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             store = SQLiteStore(Path(tmp) / "rebounce.db")

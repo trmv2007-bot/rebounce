@@ -194,7 +194,7 @@ class OpenAICompatibleProvider:
     ) -> AsyncIterator[ModelStreamChunk]:
         request = self._build_request(messages, model=model, stream=True)
         try:
-            response = await asyncio.to_thread(urllib.request.urlopen, request, self.timeout)
+            response = await asyncio.to_thread(urllib.request.urlopen, request, timeout=self.timeout)
         except Exception as exc:
             raise self._provider_error(exc) from exc
 

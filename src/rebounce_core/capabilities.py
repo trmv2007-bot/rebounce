@@ -26,6 +26,51 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+_TRUE_WORDS = {"true", "1", "yes", "on"}
+_FALSE_WORDS = {"false", "0", "no", "off", ""}
+
+
+def strict_bool(value: Any, *, field: str) -> bool:
+    """Parse a boolean without Python truthiness.
+
+    ``bool("false")`` is True, so a caller could switch a control on by sending
+    any non-empty string, or off by sending a non-empty string meaning "off".
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in _TRUE_WORDS:
+            return True
+        if text in _FALSE_WORDS:
+            return False
+    raise ValueError(f"{field} must be a boolean")
+
+
+MCP_ALLOWLIST_ENV = "REBOUNCE_MCP_ALLOWLIST"
+_MCP_UNSAFE_COMMAND = re.compile(r"[;&|`$<>\n\r]")
+
+
+def mcp_allowlist() -> set[str]:
+    return {item.strip().lower() for item in os.getenv(MCP_ALLOWLIST_ENV, "").split(",") if item.strip()}
+
+
+def mcp_command_allowed(command: str) -> bool:
+    """Only executables named in REBOUNCE_MCP_ALLOWLIST may be spawned.
+
+    An unset allow-list denies everything, so registering an MCP server never
+    grants execution by itself.
+    """
+    text = str(command).strip()
+    if not text or _MCP_UNSAFE_COMMAND.search(text):
+        return False
+    allowed = mcp_allowlist()
+    if not allowed:
+        return False
+    name = text.replace("\\", "/").rsplit("/", 1)[-1].removesuffix(".exe").lower()
+    return name in {entry.removesuffix(".exe") for entry in allowed}
+
+
 def _get_setting(store: SQLiteStore, cid: str, key: str, default: Any) -> Any:
     with store._connect() as con:
         row = con.execute(
@@ -374,42 +419,22 @@ class CuriosityEngine:
 
 
 def load_policy(store: SQLiteStore, companion_id: str) -> PermissionPolicy:
-    defaults = {
-        "conversation": PermissionRule("conversation", ActionLevel.INFORMATIONAL, True),
-        "memory": PermissionRule("memory", ActionLevel.REVERSIBLE, True),
-        "local_files": PermissionRule("local_files", ActionLevel.NO_ACTION, False),
-        "browser": PermissionRule("browser", ActionLevel.NO_ACTION, False),
-        "github": PermissionRule("github", ActionLevel.NO_ACTION, False),
-        "mcp": PermissionRule("mcp", ActionLevel.NO_ACTION, False),
-        "notes": PermissionRule("notes", ActionLevel.REVERSIBLE, True),
-        "tasks": PermissionRule("tasks", ActionLevel.REVERSIBLE, True),
-        "calendar": PermissionRule("calendar", ActionLevel.REVERSIBLE, True),
-        "projects": PermissionRule("projects", ActionLevel.REVERSIBLE, True),
-        "voice": PermissionRule("voice", ActionLevel.REVERSIBLE, True),
-        "presence": PermissionRule("presence", ActionLevel.REVERSIBLE, True),
-        "email": PermissionRule("email", ActionLevel.NO_ACTION, False),
-        "screen": PermissionRule("screen", ActionLevel.NO_ACTION, False),
-        "camera": PermissionRule("camera", ActionLevel.NO_ACTION, False),
-        "location": PermissionRule("location", ActionLevel.NO_ACTION, False),
-        "device_sync": PermissionRule("device_sync", ActionLevel.REVERSIBLE, True),
-        "delegation": PermissionRule("delegation", ActionLevel.REVERSIBLE, True),
-        "avatar": PermissionRule("avatar", ActionLevel.REVERSIBLE, True),
-        "shared_activities": PermissionRule("shared_activities", ActionLevel.REVERSIBLE, True),
-        "physical_devices": PermissionRule("physical_devices", ActionLevel.NO_ACTION, False),
-        "wearable": PermissionRule("wearable", ActionLevel.NO_ACTION, False),
-        "smart_home": PermissionRule("smart_home", ActionLevel.NO_ACTION, False),
-        "robotics": PermissionRule("robotics", ActionLevel.NO_ACTION, False),
-        "haptics": PermissionRule("haptics", ActionLevel.NO_ACTION, False),
-        "payments": PermissionRule("payments", ActionLevel.PROHIBITED, False),
-    }
+    defaults = {rule.resource: rule for rule in PermissionPolicy.safe_default().as_rules()}
     with store._connect() as con:
         for row in con.execute("SELECT resource,allowed,max_level FROM permissions WHERE companion_id=?", (str(companion_id),)).fetchall():
             defaults[row["resource"]] = PermissionRule(row["resource"], ActionLevel(int(row["max_level"])), bool(row["allowed"]))
     return PermissionPolicy(tuple(defaults.values()))
 
 
-def set_permission(store: SQLiteStore, companion_id: str, resource: str, allowed: bool, max_level: int) -> dict[str,Any]:
-    level = ActionLevel(int(max_level))
+def set_permission(store: SQLiteStore, companion_id: str, resource: str, allowed: Any, max_level: Any) -> dict[str,Any]:
+    resource = str(resource).strip()
+    if resource not in {rule.resource for rule in PermissionPolicy.safe_default().as_rules()}:
+        raise ValueError("unknown permission resource")
+    allowed = strict_bool(allowed, field="allowed")
+    try:
+        level = ActionLevel(int(max_level))
+    except (TypeError, ValueError):
+        raise ValueError("max_level must be between 0 and 5") from None
     if level == ActionLevel.PROHIBITED:
         allowed = False
     with store._connect() as con:
@@ -495,7 +520,7 @@ TOOL_SPECS = (
     ToolSpec("browser.fetch","browser",ActionLevel.INFORMATIONAL,"Fetch a public web page as untrusted content"),
     ToolSpec("browser.open","browser",ActionLevel.INFORMATIONAL,"Open a public URL in the default browser"),
     ToolSpec("github.get","github",ActionLevel.INFORMATIONAL,"Read a public GitHub API resource"),
-    ToolSpec("mcp.list_tools","mcp",ActionLevel.INFORMATIONAL,"List tools from an MCP server"),
+    ToolSpec("mcp.list_tools","mcp",ActionLevel.APPROVAL_REQUIRED,"List tools from an MCP server"),
     ToolSpec("mcp.call","mcp",ActionLevel.APPROVAL_REQUIRED,"Call an MCP tool after approval"),
 )
 
@@ -514,8 +539,20 @@ class ToolGateway:
                 return spec
         raise ValueError("unknown tool")
 
-    def _needs_approval(self, tool: ToolSpec, approved: bool) -> bool:
-        return tool.level >= ActionLevel.APPROVAL_REQUIRED and not approved
+    def _consume_approval(self, approval_id: str, spec: ToolSpec, args: dict[str,Any]) -> bool:
+        """An approval is single-use and bound to the exact tool call it was raised for."""
+        row = _row(self.store, "SELECT * FROM tool_approvals WHERE id=? AND companion_id=?", (approval_id, str(self.companion_id)))
+        if not row or row["status"] != "approved" or row["tool_name"] != spec.name:
+            return False
+        try:
+            stored_args = json.loads(row["args_json"] or "{}")
+        except ValueError:
+            return False
+        if stored_args != args:
+            return False
+        with self.store._connect() as con:
+            con.execute("UPDATE tool_approvals SET status='consumed' WHERE id=?", (approval_id,))
+        return True
 
     def _queue_approval(self, tool: ToolSpec, args: dict[str,Any]) -> dict[str,Any]:
         approval_id = str(uuid4())
@@ -527,13 +564,17 @@ class ToolGateway:
         self.store.save_event(Event(EventType.TOOL_APPROVAL_REQUIRED,self.user_id,self.companion_id,{"approval_id":approval_id,"tool":tool.name,"level":int(tool.level)}))
         return {"status":"approval_required","approval_id":approval_id,"tool":tool.name,"reason":"Explicit approval is required before this change."}
 
-    def execute(self, tool_name: str, args: dict[str,Any], *, approved: bool=False) -> dict[str,Any]:
+    def execute(self, tool_name: str, args: dict[str,Any], *, approval_id: str | None = None) -> dict[str,Any]:
         spec = self._spec(tool_name)
         if not self.policy.decide(spec.resource, spec.level):
             self.store.save_event(Event(EventType.TOOL_DENIED,self.user_id,self.companion_id,{"tool":tool_name,"level":int(spec.level)}))
             return {"status":"denied","tool":tool_name,"reason":"Permission policy denied this action."}
-        if self._needs_approval(spec, approved):
-            return self._queue_approval(spec,args)
+        if spec.level >= ActionLevel.APPROVAL_REQUIRED:
+            if not approval_id:
+                return self._queue_approval(spec,args)
+            if not self._consume_approval(str(approval_id), spec, args):
+                self.store.save_event(Event(EventType.TOOL_DENIED,self.user_id,self.companion_id,{"tool":tool_name,"reason":"approval_missing_or_stale"}))
+                return {"status":"denied","tool":tool_name,"reason":"No approved request covers this exact action."}
         try:
             result = self._run(spec.name,args)
         except Exception as exc:
@@ -618,7 +659,9 @@ class ToolGateway:
             server_id=str(args.get("server_id",""))
             server=_row(self.store,"SELECT * FROM mcp_servers WHERE id=? AND companion_id=? AND enabled=1",(server_id,cid))
             if not server: raise ValueError("enabled MCP server not found")
-            mcp_args=json.loads(server["args_json"] or "[]")
+            if not mcp_command_allowed(str(server["command"])):
+                raise ValueError("MCP command is not in the REBOUNCE_MCP_ALLOWLIST")
+            mcp_args=[str(item) for item in json.loads(server["args_json"] or "[]")]
             if name=="mcp.list_tools": return _mcp_exchange(str(server["command"]),list(mcp_args),"tools/list")
             if name=="mcp.call": return _mcp_exchange(str(server["command"]),list(mcp_args),"tools/call",{"name":str(args.get("name","")),"arguments":args.get("arguments",{})})
         raise ValueError("unsupported tool")

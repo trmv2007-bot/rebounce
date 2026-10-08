@@ -29,6 +29,9 @@ class PermissionPolicy:
     def __init__(self, rules: tuple[PermissionRule, ...] = ()) -> None:
         self._rules = {rule.resource: rule for rule in rules}
 
+    def as_rules(self) -> tuple[PermissionRule, ...]:
+        return tuple(self._rules.values())
+
     def decide(self, resource: str, requested_level: ActionLevel) -> bool:
         rule = self._rules.get(resource)
         if rule is None:

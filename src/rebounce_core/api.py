@@ -30,11 +30,13 @@ from .capabilities import (
     get_presence,
     get_voice_config,
     list_approvals,
+    mcp_command_allowed,
     resolve_approval,
     set_attention,
     set_permission,
     set_presence,
     set_voice_config,
+    strict_bool,
 )
 from .advanced import (
     DeviceSyncManager,
@@ -316,14 +318,17 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
             if len(parts) == 4 and parts[:2] == ["v1", "companions"] and parts[3] == "tools":
                 identity = self._identity(parts[2])
                 gateway = ToolGateway(self.app.store, identity.user_id, identity.companion_id)
-                return self._send(200, gateway.execute(str(data["tool"]), dict(data.get("args", {})), approved=bool(data.get("approved", False))))
+                approval_id = data.get("approval_id")
+                if approval_id is not None and not isinstance(approval_id, str):
+                    raise ValueError("approval_id must be a string")
+                return self._send(200, gateway.execute(str(data["tool"]), dict(data.get("args", {})), approval_id=approval_id))
 
             if len(parts) == 5 and parts[:2] == ["v1", "companions"] and parts[3] == "approvals":
                 identity = self._identity(parts[2])
-                approval = resolve_approval(self.app.store, parts[4], bool(data.get("approved", False)), str(identity.companion_id))
-                if data.get("approved", False):
+                approval = resolve_approval(self.app.store, parts[4], strict_bool(data.get("approved", False), field="approved"), str(identity.companion_id))
+                if approval["status"] == "approved":
                     gateway = ToolGateway(self.app.store, identity.user_id, identity.companion_id)
-                    approval["execution"] = gateway.execute(approval["tool_name"], json.loads(approval["args_json"]), approved=True)
+                    approval["execution"] = gateway.execute(approval["tool_name"], json.loads(approval["args_json"]), approval_id=parts[4])
                 return self._send(200, approval)
 
             if len(parts) == 4 and parts[:2] == ["v1", "companions"] and parts[3] == "voice":
@@ -341,6 +346,8 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
                 args = data.get("args", [])
                 if not name or not command or not isinstance(args, list):
                     raise ValueError("name, command and args[] are required")
+                if not mcp_command_allowed(command):
+                    raise ValueError("MCP command is not in the REBOUNCE_MCP_ALLOWLIST")
                 server_id = str(uuid4())
                 created = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
                 with self.app.store._connect() as con:
@@ -433,7 +440,7 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True})
             if len(parts) == 5 and parts[:2] == ["v1", "companions"] and parts[3] == "permissions":
                 identity = self._identity(parts[2])
-                return self._send(200, set_permission(self.app.store, str(identity.companion_id), parts[4], bool(data.get("allowed", False)), int(data.get("max_level", 0))))
+                return self._send(200, set_permission(self.app.store, str(identity.companion_id), parts[4], data.get("allowed", False), data.get("max_level", 0)))
 
             if len(parts) == 5 and parts[:2] == ["v1", "companions"] and parts[3] == "reminders":
                 self._identity(parts[2])
@@ -506,9 +513,8 @@ class ReBounceRequestHandler(BaseHTTPRequestHandler):
 
     def _permissions_json(self, cid):
         from .capabilities import load_policy
-        resources = {"conversation","memory","local_files","browser","github","mcp","notes","tasks","calendar","projects","voice","presence","email","payments","screen","camera","location","device_sync","delegation","avatar","shared_activities","physical_devices","wearable","smart_home","robotics","haptics"}
         policy = load_policy(self.app.store, str(cid))
-        return [policy.describe(resource) for resource in sorted(resources)]
+        return [policy.describe(rule.resource) for rule in sorted(policy.as_rules(), key=lambda rule: rule.resource)]
 
     def _provider_public(self):
         return {"provider": _PROVIDER["provider"], "base_url": _PROVIDER["base_url"], "model": _PROVIDER["model"], "configured": self.app.provider.name != "stub"}

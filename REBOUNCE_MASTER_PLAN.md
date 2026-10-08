@@ -1973,7 +1973,7 @@ Current implementation: rendered web dashboard with Chat, Memory, Relationship, 
 
 Rendered UI QA: every dashboard view and visible workflow was exercised locally, including chat, memory add/correct/forget, goal/milestone/commitment actions, provider configuration/test, identity settings and export. No browser errors were observed; the final dashboard render was visually inspected.
 
-75. STAGE 5 — VOICE
+75. STAGE 5 — VOICE [VERIFIED — 2026-10-08]
 
 Build:
 - speech-to-text
@@ -1988,7 +1988,11 @@ Build:
 Success:
 Voice feels like the same companion, not text read aloud.
 
-76. STAGE 6 — DESKTOP PRESENCE
+Current implementation: `voice.py` VoiceSession phases (idle, listening, thinking, speaking, interrupted) with turn counting, behind a provider-independent `VoiceProvider` contract currently satisfied by the browser Web Speech API; per-companion voice configuration persists through `capabilities.py`.
+
+Verification: rendered Voice view exercised by `tests/ui_smoke.py` plus voice turn/interruption unit coverage — see §128.
+
+76. STAGE 6 — DESKTOP PRESENCE [VERIFIED — 2026-10-08]
 
 Build:
 - desktop shell
@@ -2002,7 +2006,11 @@ Build:
 Success:
 Presence feels helpful, not intrusive.
 
-77. STAGE 7 — BOUNDED PROACTIVITY
+Current implementation: `desktop.py` cross-platform Tkinter presence client (always-on-top orb, compact and pet modes, draggable, dashboard launch) driven by state labels for idle, listening, thinking, speaking, curious, working, away and error; presence settings persist through `capabilities.py`.
+
+Verification: rendered Presence view exercised by `tests/ui_smoke.py` — see §128.
+
+77. STAGE 7 — BOUNDED PROACTIVITY [VERIFIED — 2026-10-08]
 
 Build:
 - scheduler
@@ -2016,7 +2024,11 @@ Build:
 Success:
 ReBounce sometimes initiates useful contact without becoming noisy.
 
-78. STAGE 8 — CURIOSITY
+Current implementation: `capabilities.py` attention state with quiet-hours evaluation and a deterministic `attention_decision`, plus `AutonomyManager` reminders, recurrence and due-proactive execution; `compact_journal` exposes the activity record.
+
+Verification: rendered Focus view plus due-reminder and quiet-hours unit coverage — see §128.
+
+78. STAGE 8 — CURIOSITY [VERIFIED — 2026-10-08]
 
 Build:
 - user interest model
@@ -2030,7 +2042,11 @@ Build:
 Success:
 It occasionally returns with a genuinely useful discovery.
 
-79. STAGE 9 — TOOLS + PERSONAL WORK
+Current implementation: `CuriosityEngine` derives queries from tracked interests, enforces a daily budget, runs bounded web research, and queues suggestions rather than pushing them.
+
+Verification: rendered Curiosity view plus budget-and-suggestion unit coverage — see §128.
+
+79. STAGE 9 — TOOLS + PERSONAL WORK [VERIFIED — 2026-10-08]
 
 Build:
 - MCP
@@ -2047,7 +2063,11 @@ Build:
 Success:
 ReBounce can help accomplish real tasks safely.
 
-80. STAGE 10 — VISION / SCREEN
+Current implementation: per-companion `PermissionPolicy` with resource allow-lists and maximum action levels; `ToolSpec`/`ToolGateway` queue approvals for gated tools, keep local filesystem operations reversible, and record auditable events; MCP adapters exchange through a subprocess seam.
+
+Verification: rendered Work view and permission toggles plus tool-approval-gate and reversible-tools unit coverage — see §128.
+
+80. STAGE 10 — VISION / SCREEN [VERIFIED — 2026-10-08]
 
 Build:
 - screenshots
@@ -2060,7 +2080,9 @@ Build:
 Success:
 It can understand what the user intentionally shows it without turning into surveillance software.
 
-81. STAGE 11 — LONG-RUNNING AGENT
+Verification: rendered Vision view (screen permission grant, session start, window/application context, observation, end) — see §127 for what is built and §128 for evidence.
+
+81. STAGE 11 — LONG-RUNNING AGENT [VERIFIED — 2026-10-08]
 
 Build:
 - planner
@@ -2074,7 +2096,9 @@ Build:
 Success:
 It can pursue meaningful user-approved goals over time.
 
-82. STAGE 12 — MULTI-DEVICE
+Verification: rendered Agent view (plan and job creation, approval, execution, delegation, stale-job recovery) — see §128.
+
+82. STAGE 12 — MULTI-DEVICE [VERIFIED — 2026-10-08]
 
 Build:
 - web
@@ -2088,7 +2112,9 @@ Build:
 Success:
 The companion remains the same across devices.
 
-83. STAGE 13 — ADVANCED EMBODIMENT
+Verification: rendered Devices view (registration, heartbeat, synchronized event cursor, handoff, offline queue) — see §128.
+
+83. STAGE 13 — ADVANCED EMBODIMENT [VERIFIED — 2026-10-08]
 
 Build:
 - high-quality avatar
@@ -2101,7 +2127,9 @@ Build:
 Success:
 The body enhances the relationship instead of becoming the entire product.
 
-84. STAGE 14 — SHARED ACTIVITIES
+Verification: rendered Avatar view (embodiment profile, asset kind, room and room-object persistence) — see §128.
+
+84. STAGE 14 — SHARED ACTIVITIES [VERIFIED — 2026-10-08]
 
 Build:
 - watch together
@@ -2114,7 +2142,9 @@ Build:
 Success:
 ReBounce participates in activities, not just conversations.
 
-85. STAGE 15 — WEARABLE / AR / PHYSICAL
+Verification: rendered Together view (activity start, pause/complete state, event timeline) — see §128.
+
+85. STAGE 15 — WEARABLE / AR / PHYSICAL [VERIFIED — 2026-10-08]
 
 Research/build:
 - AI glasses
@@ -2126,6 +2156,8 @@ Research/build:
 
 Success:
 ReBounce can extend into the physical world while preserving privacy, consent and identity.
+
+Verification: rendered Physical view (adapter registry, disabled-by-default devices, approval-gated commands, simulator transport) — see §128.
 
 86. V1 DEFINITION
 
@@ -2866,7 +2898,7 @@ ReBounce becomes more capable over time without becoming less understandable, le
 126. STAGE 0 ENGINEERING BASELINE — 2026-10-04
 
 Status:
-IMPLEMENTED — verification pending on a real development machine.
+IMPLEMENTED AND VERIFIED. §70 records the cross-platform CI pass on 2026-10-04 and §128 records the local Windows pass on 2026-10-08. The earlier "verification pending on a real development machine" note was stale and is corrected here.
 
 Repository baseline:
 - Python 3.13+ core
@@ -2910,15 +2942,15 @@ memories
 events
 permissions
 
-Verification required before declaring Stage 0 fully complete:
-- install package on Windows
-- install package on Linux
-- install package on macOS
-- run Stage 0 tests
-- verify a fresh database is created correctly
-- verify conversation/message/event persistence
-- verify deterministic permission behavior
-- verify Python 3.14 compatibility
+Verification checklist, now closed:
+- install package on Windows — DONE 2026-10-08: editable install in the project `.venv` on Python 3.13.15
+- install package on Linux — DONE: each stage workflow runs `python -m pip install -e .`
+- install package on macOS — DONE: same matrix jobs
+- run Stage 0 tests — DONE: 3 Stage 0 tests pass locally and across the CI matrix
+- verify a fresh database is created correctly — DONE: tests build a throwaway SQLite store inside a temporary directory
+- verify conversation/message/event persistence — DONE: Stage 0 persistence test plus Stage 1 persisted-context replay test
+- verify deterministic permission behavior — DONE: deterministic permission policy test
+- verify Python 3.14 compatibility — DONE: CI runs Python 3.14 on Windows, Linux and macOS
 
 Current implementation intentionally does NOT include:
 - real model provider
@@ -2935,7 +2967,7 @@ Those belong to later stages.
 127. STAGES 10–15 IMPLEMENTATION — 2026-10-04
 
 Status:
-IMPLEMENTED — automated verification pending.
+IMPLEMENTED AND VERIFIED — evidence in §128 (2026-10-08).
 
 Stage 10 — Vision / Screen
 - expiring screen-sharing sessions
@@ -2975,4 +3007,41 @@ Stage 15 — Wearable / AR / Physical
 - explicit permission layers for smart-home, wearable and robotics resources
 - approval-required physical commands
 - simulator transport for safe testing
+
+128. STAGES 5–15 VERIFICATION — 2026-10-08
+
+Status:
+VERIFIED against the §111A current-commit CI rule and the rendered-interface half of §112, on Windows.
+
+Verified commit:
+`5eec00c` (feat: complete ReBounce through Stage 15 (#7)) on main, identical to origin/main, working tree clean.
+
+Automated suite:
+- command: `python -m unittest discover -s tests -v`
+- environment: Windows build 10.0.26300, project `.venv`, Python 3.13.15
+- result: 27 tests, 0 failures, 0 errors, 0 skips, in 5.34 s
+- breakdown: Stage 0 × 3, Stage 1 × 6, Stages 2-4 × 6, Stages 5-9 × 6, Stages 10-15 × 6
+- the repository stayed clean afterwards; the suite builds temporary SQLite stores instead of touching the development database
+
+Rendered interface, Stages 5–9:
+- command: `python tests/ui_smoke.py`
+- result: pass, with 152 localhost API calls (148 × 200 and 4 × 201 for creations) and zero page or console errors
+- views exercised in a real browser: Chat, Memory, Relationship, Voice, Presence, Focus, Curiosity, Work, Activity, Models, Settings
+- workflows exercised: chat send, memory add/correct/forget, goal, milestone and commitment creation, permission toggles for local_files, browser, github and mcp, provider configuration and provider test, settings update, and data export
+
+Rendered interface, Stages 10–15:
+- command: `python tests/ui_smoke_10_15.py`
+- result: pass, with zero page or console errors
+- advanced views exercised: Vision, Agent, Devices, Avatar, Together, Physical
+- workflows exercised: screen permission grant then vision start, observe, window context and end; plan and job creation, approval, execution, delegation and stale-job recovery; device registration, heartbeat, synchronization cursor, handoff and offline queue; embodiment profile, room and room objects; activity start and pause; the physical registry with approval-gated commands over the simulator transport
+
+Platform note:
+`stage5-9.yml` and `stage10-15.yml` gate both browser steps to `ubuntu-latest` with Python 3.13, so Windows and macOS CI never renders the dashboard. This is the first recorded Windows rendered-UI pass. Playwright 1.63.0 with Chromium 153 was installed into the local `.venv` only and `pyproject.toml` is unchanged, keeping the core standard-library-first.
+
+Still open under §112 for Stages 5–15:
+- deliberate failure testing beyond the approval and recovery paths already asserted
+- a security and privacy review, especially prompt injection and memory poisoning through the tool gateway and vision intake
+- a performance check, including streamed voice latency and dashboard responsiveness
+
+Stages 5–15 are therefore verified for CI-green and rendered-interface criteria, not for the entire §112 list.
 

@@ -2540,15 +2540,20 @@ REJECTED
 | Deterministic permissions | ADOPTED | Safety |
 | Audit log | PLANNED | Trust |
 | Local/hybrid capability | PLANNED | Privacy/resilience |
-| Voice | PLANNED | Presence |
-| Desktop presence | PLANNED | Embodiment |
-| Proactivity | PLANNED | Initiative |
+| Voice | ADOPTED | Presence. Built as Stage 5, verified 2026-10-08 (§128) |
+| Desktop presence | ADOPTED | Embodiment. Built as Stage 6, verified 2026-10-08 (§128) |
+| Proactivity | ADOPTED | Initiative. Built as Stage 7, verified 2026-10-08 (§128) |
 | Curiosity | EXPERIMENT | Differentiation |
-| MCP | PLANNED | Tool ecosystem |
-| Vision | PLANNED | Multimodality |
+| MCP | ADOPTED | Tool ecosystem. Built as Stage 9, verified 2026-10-08 (§128) |
+| Vision | ADOPTED | Multimodality. Built as Stage 10, verified 2026-10-08 (§128) |
 | Multi-device | RESEARCH/PLANNED | Continuity |
 | AR/VR | RESEARCH | Future surface |
 | Robotics | RESEARCH | Speculative |
+
+Rows above still carry their pre-Stage-5 labels on purpose: Curiosity remains an
+EXPERIMENT as a product judgement, and Audit log, Local/hybrid and Multi-device are
+left for a separate decision even though Stage 9 and Stage 12 code now exists.
+See §128 for what is actually built and verified.
 
 111. IMPORTANT NON-GOALS
 

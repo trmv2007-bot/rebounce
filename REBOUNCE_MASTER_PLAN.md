@@ -1990,7 +1990,7 @@ Voice feels like the same companion, not text read aloud.
 
 Current implementation: `voice.py` VoiceSession phases (idle, listening, thinking, speaking, interrupted) with turn counting, behind a provider-independent `VoiceProvider` contract currently satisfied by the browser Web Speech API; per-companion voice configuration persists through `capabilities.py`.
 
-Verification: rendered Voice view exercised by `tests/ui_smoke.py` plus voice turn/interruption unit coverage — see §128.
+Verification: rendered Voice view exercised by `tests/ui_smoke.py` plus voice turn/interruption unit coverage — see §129.
 
 76. STAGE 6 — DESKTOP PRESENCE [VERIFIED — 2026-10-08]
 
@@ -2008,7 +2008,7 @@ Presence feels helpful, not intrusive.
 
 Current implementation: `desktop.py` cross-platform Tkinter presence client (always-on-top orb, compact and pet modes, draggable, dashboard launch) driven by state labels for idle, listening, thinking, speaking, curious, working, away and error; presence settings persist through `capabilities.py`.
 
-Verification: rendered Presence view exercised by `tests/ui_smoke.py` — see §128.
+Verification: rendered Presence view exercised by `tests/ui_smoke.py` — see §129.
 
 77. STAGE 7 — BOUNDED PROACTIVITY [VERIFIED — 2026-10-08]
 
@@ -2026,7 +2026,7 @@ ReBounce sometimes initiates useful contact without becoming noisy.
 
 Current implementation: `capabilities.py` attention state with quiet-hours evaluation and a deterministic `attention_decision`, plus `AutonomyManager` reminders, recurrence and due-proactive execution; `compact_journal` exposes the activity record.
 
-Verification: rendered Focus view plus due-reminder and quiet-hours unit coverage — see §128.
+Verification: rendered Focus view plus due-reminder and quiet-hours unit coverage — see §129.
 
 78. STAGE 8 — CURIOSITY [VERIFIED — 2026-10-08]
 
@@ -2044,7 +2044,7 @@ It occasionally returns with a genuinely useful discovery.
 
 Current implementation: `CuriosityEngine` derives queries from tracked interests, enforces a daily budget, runs bounded web research, and queues suggestions rather than pushing them.
 
-Verification: rendered Curiosity view plus budget-and-suggestion unit coverage — see §128.
+Verification: rendered Curiosity view plus budget-and-suggestion unit coverage — see §129.
 
 79. STAGE 9 — TOOLS + PERSONAL WORK [VERIFIED — 2026-10-08]
 
@@ -2065,9 +2065,9 @@ ReBounce can help accomplish real tasks safely.
 
 Current implementation: per-companion `PermissionPolicy` with resource allow-lists and maximum action levels; `ToolSpec`/`ToolGateway` queue approvals for gated tools, keep local filesystem operations reversible, and record auditable events; MCP adapters exchange through a subprocess seam.
 
-Verification: rendered Work view and permission toggles plus tool-approval-gate and reversible-tools unit coverage — see §128.
+Verification: rendered Work view and permission toggles plus tool-approval-gate and reversible-tools unit coverage — see §129.
 
-80. STAGE 10 — VISION / SCREEN [VERIFIED — 2026-10-08]
+80. STAGE 10 — VISION / SCREEN [PARTIAL — READ PATH VERIFIED 2026-10-08]
 
 Build:
 - screenshots
@@ -2080,9 +2080,9 @@ Build:
 Success:
 It can understand what the user intentionally shows it without turning into surveillance software.
 
-Verification: rendered Vision view (screen permission grant, session start, window/application context, observation, end) — see §127 for what is built and §128 for evidence.
+Verification: read path only. The Vision view renders from the real dashboard payload and the sensor rules default to denied, but POST /v1/companions/{id}/vision is not dispatched, so session start, observe and end cannot be exercised from the browser (§129).
 
-81. STAGE 11 — LONG-RUNNING AGENT [VERIFIED — 2026-10-08]
+81. STAGE 11 — LONG-RUNNING AGENT [PARTIAL — READ PATH VERIFIED 2026-10-08]
 
 Build:
 - planner
@@ -2096,9 +2096,9 @@ Build:
 Success:
 It can pursue meaningful user-approved goals over time.
 
-Verification: rendered Agent view (plan and job creation, approval, execution, delegation, stale-job recovery) — see §128.
+Verification: read path only. Plans, jobs, checkpoints and delegations appear from the real payload; the agent write route is not dispatched (§129).
 
-82. STAGE 12 — MULTI-DEVICE [VERIFIED — 2026-10-08]
+82. STAGE 12 — MULTI-DEVICE [PARTIAL — READ PATH VERIFIED 2026-10-08]
 
 Build:
 - web
@@ -2112,9 +2112,9 @@ Build:
 Success:
 The companion remains the same across devices.
 
-Verification: rendered Devices view (registration, heartbeat, synchronized event cursor, handoff, offline queue) — see §128.
+Verification: read path only. The device registry reads from the real payload; register, heartbeat, sync, handoff and offline queue have no route (§129).
 
-83. STAGE 13 — ADVANCED EMBODIMENT [VERIFIED — 2026-10-08]
+83. STAGE 13 — ADVANCED EMBODIMENT [PARTIAL — READ PATH VERIFIED 2026-10-08]
 
 Build:
 - high-quality avatar
@@ -2127,9 +2127,9 @@ Build:
 Success:
 The body enhances the relationship instead of becoming the entire product.
 
-Verification: rendered Avatar view (embodiment profile, asset kind, room and room-object persistence) — see §128.
+Verification: read path only. Embodiment profile and room read from the real payload; configure, room and object have no route (§129).
 
-84. STAGE 14 — SHARED ACTIVITIES [VERIFIED — 2026-10-08]
+84. STAGE 14 — SHARED ACTIVITIES [PARTIAL — READ PATH VERIFIED 2026-10-08]
 
 Build:
 - watch together
@@ -2142,9 +2142,9 @@ Build:
 Success:
 ReBounce participates in activities, not just conversations.
 
-Verification: rendered Together view (activity start, pause/complete state, event timeline) — see §128.
+Verification: read path only. Activities and their timeline read from the real payload; create, update and event have no route (§129).
 
-85. STAGE 15 — WEARABLE / AR / PHYSICAL [VERIFIED — 2026-10-08]
+85. STAGE 15 — WEARABLE / AR / PHYSICAL [PARTIAL — READ PATH VERIFIED 2026-10-08]
 
 Research/build:
 - AI glasses
@@ -2157,7 +2157,7 @@ Research/build:
 Success:
 ReBounce can extend into the physical world while preserving privacy, consent and identity.
 
-Verification: rendered Physical view (adapter registry, disabled-by-default devices, approval-gated commands, simulator transport) — see §128.
+Verification: read path only. The registry and command queue read from the real payload; register, enable, command and resolve have no route (§129).
 
 86. V1 DEFINITION
 
@@ -2537,23 +2537,23 @@ REJECTED
 | Memory as first-class subsystem | ADOPTED | Continuity |
 | User memory controls | ADOPTED | Trust |
 | Bounded autonomy | ADOPTED | Useful agency |
-| Deterministic permissions | ADOPTED | Safety |
-| Audit log | PLANNED | Trust |
+| Deterministic permissions | ADOPTED | Safety. Approval is server-owned and single-use, flags are strictly typed, MCP commands are allow-listed (§129) |
+| Audit log | ADOPTED | Tool execution, denial and approval-required events are recorded per companion; the Trust Center surface that would expose them is still missing |
 | Local/hybrid capability | PLANNED | Privacy/resilience |
-| Voice | ADOPTED | Presence. Built as Stage 5, verified 2026-10-08 (§128) |
-| Desktop presence | ADOPTED | Embodiment. Built as Stage 6, verified 2026-10-08 (§128) |
-| Proactivity | ADOPTED | Initiative. Built as Stage 7, verified 2026-10-08 (§128) |
-| Curiosity | EXPERIMENT | Differentiation |
-| MCP | ADOPTED | Tool ecosystem. Built as Stage 9, verified 2026-10-08 (§128) |
-| Vision | ADOPTED | Multimodality. Built as Stage 10, verified 2026-10-08 (§128) |
-| Multi-device | RESEARCH/PLANNED | Continuity |
+| Voice | ADOPTED | Presence. Built as Stage 5, verified against the real API 2026-10-08 (§129) |
+| Desktop presence | ADOPTED | Embodiment. Built as Stage 6, view verified against the real API 2026-10-08 (§129) |
+| Proactivity | ADOPTED | Initiative. Built as Stage 7, verified against the real API 2026-10-08 (§129); quiet-hours deferral still drops work (§129) |
+| Curiosity | EXPERIMENT | Differentiation. Budget and queue work, but the background query leaks durable memory to an external engine (§129) |
+| MCP | ADOPTED | Tool ecosystem. Built as Stage 9; allow-listed and approval-gated as of 2026-10-08 (§129) |
+| Vision | PLANNED | Multimodality. Stage 10 model and read path exist and are verified, but the screen-session routes are not dispatched, so nothing can start or end one (§129) |
+| Multi-device | PLANNED | Continuity. Stage 12 model and read path exist; register, heartbeat, sync, handoff and offline queue have no routes (§129) |
 | AR/VR | RESEARCH | Future surface |
 | Robotics | RESEARCH | Speculative |
 
-Rows above still carry their pre-Stage-5 labels on purpose: Curiosity remains an
-EXPERIMENT as a product judgement, and Audit log, Local/hybrid and Multi-device are
-left for a separate decision even though Stage 9 and Stage 12 code now exists.
-See §128 for what is actually built and verified.
+Stages 10-15 are deliberately not marked ADOPTED above: their state and read path
+exist and are verified, but the write routes the dashboard calls return 404, so the
+features are not usable. See §129 for what is verified, what was fixed today, and what
+is still open.
 
 111. IMPORTANT NON-GOALS
 
@@ -2903,7 +2903,7 @@ ReBounce becomes more capable over time without becoming less understandable, le
 126. STAGE 0 ENGINEERING BASELINE — 2026-10-04
 
 Status:
-IMPLEMENTED AND VERIFIED. §70 records the cross-platform CI pass on 2026-10-04 and §128 records the local Windows pass on 2026-10-08. The earlier "verification pending on a real development machine" note was stale and is corrected here.
+IMPLEMENTED AND VERIFIED. §70 records the cross-platform CI pass on 2026-10-04 and §128 records the local Windows pass on 2026-10-08. The earlier "verification pending on a real development machine" note was stale and is corrected here. The Stage 0 checklist below rests on the unit suite and CI matrix only, both of which §129 re-confirms; the withdrawal in §128 concerns the browser harnesses, not these items.
 
 Repository baseline:
 - Python 3.13+ core
@@ -2972,7 +2972,8 @@ Those belong to later stages.
 127. STAGES 10–15 IMPLEMENTATION — 2026-10-04
 
 Status:
-IMPLEMENTED AND VERIFIED — evidence in §128 (2026-10-08).
+IMPLEMENTED — read path verified 2026-10-08 (§129). The write routes the dashboard
+calls are not dispatched, so these stages are not usable end to end.
 
 Stage 10 — Vision / Screen
 - expiring screen-sharing sessions
@@ -3016,37 +3017,104 @@ Stage 15 — Wearable / AR / Physical
 128. STAGES 5–15 VERIFICATION — 2026-10-08
 
 Status:
-VERIFIED against the §111A current-commit CI rule and the rendered-interface half of §112, on Windows.
+PARTLY WITHDRAWN. The automated-suite result stands. The rendered-interface result
+below was produced against a mock backend and did not verify frontend-to-backend
+integration; §129 records the correction and the re-verification.
 
-Verified commit:
-`5eec00c` (feat: complete ReBounce through Stage 15 (#7)) on main, identical to origin/main, working tree clean.
+What ran at 2026-10-08 against commit `5eec00c` on Windows build 10.0.26300, project
+`.venv`, Python 3.13.15:
+- `python -m unittest discover -s tests -v` → 27 tests, 0 failures, 0 errors, 5.34 s
+  (Stage 0 × 3, Stage 1 × 6, Stages 2-4 × 6, Stages 5-9 × 6, Stages 10-15 × 6), with the
+  repository left clean because the suite builds temporary SQLite stores
+- `python tests/ui_smoke.py` and `python tests/ui_smoke_10_15.py` → both exited 0
 
-Automated suite:
-- command: `python -m unittest discover -s tests -v`
-- environment: Windows build 10.0.26300, project `.venv`, Python 3.13.15
-- result: 27 tests, 0 failures, 0 errors, 0 skips, in 5.34 s
-- breakdown: Stage 0 × 3, Stage 1 × 6, Stages 2-4 × 6, Stages 5-9 × 6, Stages 10-15 × 6
-- the repository stayed clean afterwards; the suite builds temporary SQLite stores instead of touching the development database
+Correction, same day:
+Both harnesses served `web/` from a hand-written `SimpleHTTPRequestHandler` returning
+hardcoded JSON. Neither imported `rebounce_core.api`. The JavaScript genuinely ran in a
+real browser with no page or console errors, so the views do render — but every request
+was answered by the fixture rather than by ReBounce, and the "152 localhost API calls"
+counted calls to that fixture. The workflow lists below were therefore never evidence
+that the product works, and one of them (the Stages 10-15 write flows) does not.
 
-Rendered interface, Stages 5–9:
-- command: `python tests/ui_smoke.py`
-- result: pass, with 152 localhost API calls (148 × 200 and 4 × 201 for creations) and zero page or console errors
-- views exercised in a real browser: Chat, Memory, Relationship, Voice, Presence, Focus, Curiosity, Work, Activity, Models, Settings
-- workflows exercised: chat send, memory add/correct/forget, goal, milestone and commitment creation, permission toggles for local_files, browser, github and mcp, provider configuration and provider test, settings update, and data export
+What was still worth recording from that run: the dashboard renders Chat, Memory,
+Relationship, Voice, Presence, Focus, Curiosity, Work, Activity, Models and Settings,
+plus the advanced Vision, Agent, Devices, Avatar, Together and Physical surfaces, without
+raising a browser error.
 
-Rendered interface, Stages 10–15:
-- command: `python tests/ui_smoke_10_15.py`
-- result: pass, with zero page or console errors
-- advanced views exercised: Vision, Agent, Devices, Avatar, Together, Physical
-- workflows exercised: screen permission grant then vision start, observe, window context and end; plan and job creation, approval, execution, delegation and stale-job recovery; device registration, heartbeat, synchronization cursor, handoff and offline queue; embodiment profile, room and room objects; activity start and pause; the physical registry with approval-gated commands over the simulator transport
+Platform note at the time: both browser steps were gated to `ubuntu-latest` with Python
+3.13, so no Windows or macOS CI job rendered the dashboard at all.
 
-Platform note:
-`stage5-9.yml` and `stage10-15.yml` gate both browser steps to `ubuntu-latest` with Python 3.13, so Windows and macOS CI never renders the dashboard. This is the first recorded Windows rendered-UI pass. Playwright 1.63.0 with Chromium 153 was installed into the local `.venv` only and `pyproject.toml` is unchanged, keeping the core standard-library-first.
+129. SECURITY AND INTEGRATION REMEDIATION — 2026-10-08
 
-Still open under §112 for Stages 5–15:
-- deliberate failure testing beyond the approval and recovery paths already asserted
-- a security and privacy review, especially prompt injection and memory poisoning through the tool gateway and vision intake
-- a performance check, including streamed voice latency and dashboard responsiveness
+Status:
+STAGES 5-9 VERIFIED AGAINST THE REAL API. STAGES 10-15 READ PATH VERIFIED; WRITE PATHS
+ARE NOT IMPLEMENTED.
 
-Stages 5–15 are therefore verified for CI-green and rendered-interface criteria, not for the entire §112 list.
+How this was found:
+Four code reviews plus live probing of `python -m rebounce_core.api` on throwaway
+temporary databases. Anything marked "proven" below was reproduced against the running
+server rather than read off the source.
+
+Closed by this change:
+- Approval is no longer something the caller can assert. `approved` left the request
+  contract; an L3/L4 execution now requires an approval row that is resolved, scoped to
+  the companion, names the same tool, carries byte-for-byte the same arguments, and is
+  marked consumed afterwards. Proven: `{"approved": true}` returns `approval_required`,
+  a pending or invented id returns `denied`, a second use of a consumed id returns
+  `denied`, and the file only appears after a real approval.
+- The truthiness class of bugs is closed at the same boundary. `{"allowed":"false"}`
+  used to enable a control because `bool("false")` is True; flags now go through
+  `strict_bool`, unknown resources and out-of-range levels are rejected, and the default
+  rule set comes from `PermissionPolicy.safe_default` alone instead of three copies.
+- MCP can no longer spawn an arbitrary command. Both registration and execution require
+  the executable to be named in `REBOUNCE_MCP_ALLOWLIST`, which is empty by default, and
+  `mcp.*` moved from INFORMATIONAL to APPROVAL_REQUIRED, so `mcp.list_tools` — which
+  previously ran a stored binary with no approval at all — now queues first.
+- `OpenAICompatibleProvider.stream()` passed the timeout where urllib reads a positional
+  argument as the request body, replacing the JSON payload with `120.0` and leaving the
+  socket on the global default. Streaming was broken against every real provider; commit
+  `35796cd` had fixed only `generate()`. The new regression test asserts the keyword form,
+  the POST method and that the encoded body survives intact.
+- Both smoke harnesses now boot `create_local_api` against a temporary store. Stage 5-9
+  exercises onboarding, chat, memory add/correct/forget, milestones, goals, commitments,
+  voice, presence, attention, reminders, workbench items, the approval-gated file write
+  (read back from a temp sandbox), permission toggles, provider test, rename and export
+  against the real API. Browser jobs still run only on `ubuntu-latest` at Python 3.13;
+  widening them to Windows and macOS is prepared but could not be pushed, because the
+  credential in use is not allowed to update `.github/workflows`.
+
+Found and deliberately left open, in priority order:
+- `POST /v1/companions/{id}/vision|agent|devices|embodiment|together|physical` are not
+  dispatched by `api.py`, so every Stage 10-15 button in `web/advanced.js` gets a 404
+  while the views themselves render from real dashboard data. The 10-15 harness gates its
+  write flows on those routes existing, which is why the gap was invisible before.
+- No authentication and incomplete object-level scoping. Proven: one companion could
+  rewrite and delete another companion's memories by id. Several routes resolve a
+  companion UUID without checking `user_id`, and nothing validates Host or Origin, so a
+  preflight-free cross-origin POST from any web page can reach this localhost API and
+  repoint `/v1/config/provider`.
+- Stored XSS path: curiosity result URLs are interpolated into `href` with no scheme
+  allow-list, `esc()` omits the single quote and is skipped on several interpolations, and
+  no Content-Security-Policy header is sent.
+- Turns are not transactional. The user message is committed before the provider call, so
+  a provider failure leaves a dangling message and a retry duplicates it; a mid-stream
+  failure loses the partial reply because the HTTP 200 has already been written. Proven:
+  a failed chat produced a conversation holding one user message and nothing else.
+- Honesty gaps of the §44 kind: `PATCH` on a missing goal answers `{"ok": true}`, and
+  `{"content": null}` persists the literal string "None". `Content-Length: -1` slips past
+  the body guard and parks a handler thread.
+- Autonomy and time: quiet-hours deferral marks the reminder completed, so saved work
+  never re-fires; due-time logic compares mixed naive and aware timestamps as text
+  (`created_at ...+00:00` beside `last_confirmed_at ...+05:30` in one row); daily budgets
+  reset on UTC while quiet hours use local time.
+- Privacy: curiosity builds a search query out of the highest-importance durable memory
+  and posts it to an external engine on a background interval without approval, and every
+  memory is stored with provenance `user` even when it arrived from tool or web output,
+  which is §43 unimplemented.
+- Self-hosting readiness: no schema version or migrations (39 `CREATE TABLE IF NOT EXISTS`
+  and no `PRAGMA user_version`), no backup or restore path against §99, no linter, type
+  checker or coverage gate, no LICENSE file despite `license = { text = "MIT" }`, no tags
+  or releases, and `desktop.py` ships with no import anywhere in the tests.
+- §112's failure testing, security and privacy review, and performance checks remain open
+  for Stages 0-15.
 

@@ -209,11 +209,20 @@ def main() -> None:
             page.locator("#tool-name").select_option("notes.create")
             page.locator("#tool-args").fill('{"title":"Tool note","content":"created"}')
             page.get_by_role("button", name="Execute", exact=True).click()
-            page.locator("#tool-output").wait_for()
+            page.wait_for_timeout(600)
+
+            # Executing a tool re-renders the whole Workbench, so reload before choosing
+            # the next one. Without this the picker can be replaced mid-flow and the
+            # previous tool runs with empty arguments - which is what CI caught on Linux.
+            page.reload(wait_until="networkidle")
+            page.get_by_role("button", name="Work", exact=True).click()
+            page.get_by_text("Workbench", exact=True).wait_for()
 
             # An L3 tool has to produce a real approval request, then run exactly once.
             page.locator("#tool-name").select_option("local_files.write")
             page.locator("#tool-args").fill('{"path":"smoke.txt","content":"written by ui smoke"}')
+            if page.locator("#tool-name").input_value() != "local_files.write":
+                raise AssertionError("the tool picker did not keep the requested tool")
             page.get_by_role("button", name="Execute", exact=True).click()
             page.wait_for_timeout(600)
             outcome = json.loads(page.locator("#tool-output").inner_text())

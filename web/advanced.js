@@ -5,6 +5,7 @@
   const esc = value => B().esc(value);
   const api = B().api;
   const cid = B().cid;
+  const fmtTime = (value, fallback) => B().fmtTime(value, fallback);
 
   function stat(label, value) {
     return '<div class="card"><div class="metric">' + esc(value) + '</div><div class="metric-label">' + esc(label) + '</div></div>';
@@ -81,7 +82,7 @@
         '<input class="input" id="vision-shot" type="file" accept="image/*"><button class="btn" data-action="vision-observe">Share this visual context</button></div></section>' +
         '<section class="card"><div class="eyebrow">privacy boundary</div><h2>' + esc(d.active_session ? "Active session" : "No active session") + '</h2>' +
         '<div class="permission"><span>Purpose</span><span>' + esc(session.purpose || "—") + '</span></div>' +
-        '<div class="permission"><span>Expires</span><span>' + esc(session.expires_at || "—") + '</span></div>' +
+        '<div class="permission"><span>Expires</span><span>' + fmtTime(session.expires_at, "no active session") + '</span></div>' +
         '<div class="permission"><span>Raw capture retained</span><span class="badge off">No</span></div>' +
         '<div class="section-head" style="margin-top:16px"><h2>Latest context</h2></div>' +
         '<p class="muted">' + esc(context.observation || "Nothing shared yet.") + '</p>' +
@@ -124,7 +125,7 @@
       '<select class="select" id="device-select">' + (devs.map(x => '<option value="' + esc(x.id) + '">' + esc(x.name) + ' · ' + esc(x.status) + '</option>').join("") || '<option value="">Register a device first</option>') + '</select>' +
       '<div class="row"><button class="btn" data-action="device-heartbeat">Heartbeat</button><button class="btn" data-action="device-sync">Push sync event</button><button class="btn" data-action="device-pull">Pull updates</button><button class="btn" data-action="device-handoff">Create handoff</button></div></div></section>' +
       '<section class="card"><div class="eyebrow">continuity</div><h2>Recent sync</h2><div class="list">' +
-      (events.slice(0, 10).map(x => '<div class="goal"><strong>#' + esc(x.sequence) + ' · ' + esc(x.event_type) + '</strong><div class="small muted">' + esc(x.created_at) + '</div></div>').join("") || '<div class="empty">No sync events yet.</div>') +
+      (events.slice(0, 10).map(x => '<div class="goal"><strong>#' + esc(x.sequence) + ' · ' + esc(x.event_type) + '</strong><div class="small muted">' + fmtTime(x.created_at, "undated") + '</div></div>').join("") || '<div class="empty">No sync events yet.</div>') +
       '</div><div class="section-head" style="margin-top:16px"><h2>Offline work</h2></div><div class="small muted">' +
       (offline.slice(0, 6).map(x => esc(x.operation) + ' · ' + esc(x.status)).join(" · ") || "Nothing waiting offline.") + '</div></section></div>';
   }

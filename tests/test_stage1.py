@@ -243,7 +243,7 @@ class Stage1Tests(unittest.TestCase):
     def test_local_api_create_identity_and_chat(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             store = SQLiteStore(Path(tmp) / "rebounce.db")
-            server = create_local_api(store, StubModelProvider())
+            server = create_local_api(store, StubModelProvider(), port=0)
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()
             try:

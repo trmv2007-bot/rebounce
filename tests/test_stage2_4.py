@@ -138,7 +138,7 @@ class Stage24Tests(unittest.TestCase):
 
     def test_dashboard_api_and_assets(self):
         self.store.save_companion(self.identity)
-        server = create_local_api(self.store, StubModelProvider())
+        server = create_local_api(self.store, StubModelProvider(), port=0)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         base = f"http://127.0.0.1:{server.server_address[1]}"

@@ -51,7 +51,7 @@ p{margin:0}
   position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:15px;
   padding:18px 14px;border-right:1px solid var(--line);
   background:linear-gradient(180deg,rgba(13,26,40,.92),rgba(6,12,20,.86));
-  backdrop-filter:blur(20px);overflow-y:auto;overscroll-behavior:contain;
+  backdrop-filter:blur(20px);overflow:hidden;
 }
 .main{min-width:0;display:flex;flex-direction:column}
 .content{padding:var(--pad);width:100%;max-width:1240px;margin:0 auto;flex:1}
@@ -90,7 +90,19 @@ p{margin:0}
 .i{width:17px;height:17px;flex:none;opacity:.65;transition:opacity .18s var(--ease),color .18s var(--ease)}
 .nav button:hover .i{opacity:.9}
 .sidebar>*{flex:none}
-.sidebar-spacer{flex:1 0 auto;min-height:10px}
+.sidebar-spacer{flex:1 1 auto;min-height:8px}
+/* only the nav list scrolls; identity, pinned Settings and the note stay put */
+.sidebar>.nav{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-right:2px}
+.rail-foot{
+  display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-top:1px solid var(--line);
+  border-radius:0;color:var(--text-2);font-size:14px;font-weight:600;
+  transition:background .16s var(--ease),color .16s var(--ease);
+}
+.rail-foot:hover{background:rgba(125,211,252,.08);color:var(--text)}
+.rail-foot .i{opacity:.8}
+.rail-foot[aria-current="page"]{color:#fff;background:var(--grad-soft)}
+.rail-foot[aria-current="page"] .i{color:var(--cyan);opacity:1}
+.rail-note{padding:8px 10px 0;font-size:10.5px;line-height:1.5;color:var(--faint)}
 
 /* ── status bar ──────────────────────────────────────────────────── */
 .topbar{
@@ -248,6 +260,7 @@ p{margin:0}
   .shell{grid-template-columns:1fr}
   .sidebar{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);gap:14px}
   .nav{flex-direction:row;flex-wrap:nowrap;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+  .sidebar>.nav{overflow:visible;flex:none}
   .nav::-webkit-scrollbar{display:none}
   .nav-group{flex:none;flex-direction:row;gap:6px}
   .nav-label{display:none}
